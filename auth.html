@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://dns.google; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Entrar | Collection Quest</title>
+  <meta name="theme-color" content="#07061a">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <main class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-head">
+        <a class="back-link" href="index.html">
+          <img class="ico" src="assets/icons/muted/arrow-left.svg" width="18" height="18" alt="">
+          Volver al inicio
+        </a>
+        <a href="index.html" aria-label="Collection Quest, ir al inicio"><img class="ico" src="assets/icons/green/swords.svg" width="28" height="28" alt=""></a>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Acceso">
+        <button class="tab" role="tab" id="tab-login" aria-controls="panel-login" aria-selected="true" type="button">Iniciar sesión</button>
+        <button class="tab" role="tab" id="tab-registro" aria-controls="panel-registro" aria-selected="false" type="button">Crear cuenta</button>
+      </div>
+
+      <div class="form-error" id="auth-error" role="alert"></div>
+      <div class="form-info" id="auth-info" role="status"></div>
+
+      <!-- INICIAR SESIÓN -->
+      <form id="panel-login" role="tabpanel" aria-labelledby="tab-login" novalidate>
+        <div class="field">
+          <label for="login-email">Correo electrónico</label>
+          <input class="input" id="login-email" type="email" autocomplete="email" placeholder="tu@correo.com" required>
+        </div>
+        <div class="field">
+          <label for="login-pass">Contraseña</label>
+          <input class="input" id="login-pass" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-block" type="submit" id="login-submit">Iniciar sesión</button>
+      </form>
+
+      <!-- CREAR CUENTA -->
+      <form id="panel-registro" role="tabpanel" aria-labelledby="tab-registro" hidden novalidate>
+        <div class="avatar-picker">
+          <div class="avatar-preview" id="reg-avatar-preview">
+            <img class="ico" src="assets/icons/muted/user.svg" width="38" height="38" alt="">
+          </div>
+          <div>
+            <p class="label" style="font-weight:600">Tu avatar</p>
+            <p class="hint" style="margin:2px 0 8px">Opcional. Podrás cambiarlo después.</p>
+            <button class="btn btn-ghost btn-sm" type="button" id="reg-avatar-btn">
+              <img class="ico" src="assets/icons/white/image.svg" width="18" height="18" alt="">
+              Elegir imagen
+            </button>
+            <input type="file" id="reg-avatar-file" accept="image/*" hidden>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="reg-username">Nombre de usuario</label>
+          <input class="input" id="reg-username" type="text" autocomplete="username" placeholder="tu_usuario" maxlength="20" required>
+          <span class="hint">3 a 20 caracteres: letras minúsculas, números y guion bajo.</span>
+        </div>
+        <div class="field">
+          <label for="reg-email">Correo electrónico</label>
+          <input class="input" id="reg-email" type="email" autocomplete="email" placeholder="tu@correo.com" required>
+          <span class="hint">Usa un correo real: te enviaremos un enlace para confirmarlo.</span>
+        </div>
+        <div class="field">
+          <label for="reg-pass">Contraseña</label>
+          <input class="input" id="reg-pass" type="password" autocomplete="new-password" minlength="6" required>
+          <span class="hint">Mínimo 6 caracteres.</span>
+        </div>
+        <button class="btn btn-pink btn-block" type="submit" id="reg-submit">Crear cuenta</button>
+      </form>
+
+      <!-- REVISA TU CORREO (después de crear la cuenta) -->
+      <section class="verify-panel" id="verify-panel" hidden aria-live="polite">
+        <div class="big-icon"><img class="ico" src="assets/icons/green/mail-check.svg" width="42" height="42" alt=""></div>
+        <h2>Revisa tu correo</h2>
+        <p>Te enviamos un mensaje a <b id="verify-email"></b>. Ábrelo y toca el botón de confirmar para activar tu cuenta.</p>
+        <div class="verify-actions">
+          <a class="btn btn-green btn-block" id="btn-open-inbox" href="#" target="_blank" rel="noopener noreferrer">
+            <img class="ico" src="assets/icons/dark/external-link.svg" width="20" height="20" alt="">Abrir mi correo
+          </a>
+          <button class="btn btn-ghost btn-block" id="btn-resend" type="button">Reenviar correo</button>
+          <button class="btn btn-block" id="btn-to-login" type="button">Ya lo confirmé, iniciar sesión</button>
+        </div>
+        <p class="hint">¿No lo ves? Revisa la carpeta de spam o correo no deseado. Si escribiste mal tu correo, vuelve a crear la cuenta.</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>

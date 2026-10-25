@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://dns.google; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Collection Quest</title>
+  <meta name="theme-color" content="#07061a">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- BARRA SUPERIOR -->
+  <header class="topbar">
+    <button class="icon-btn" id="btn-menu" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="drawer">
+      <img class="ico" src="assets/icons/white/menu.svg" width="22" height="22" alt="">
+    </button>
+    <a class="brand" href="#todos" aria-label="Collection Quest">
+      <img class="ico" src="assets/icons/green/swords.svg" width="26" height="26" alt="">
+      <span>Collection Quest</span>
+    </a>
+
+    <form class="search" role="search" id="search-form">
+      <img class="ico" src="assets/icons/muted/search.svg" width="20" height="20" alt="">
+      <label class="sr-only" for="search">Buscar artículos o coleccionistas</label>
+      <input class="input" id="search" type="search" placeholder="Buscar artículos o coleccionistas" autocomplete="off" maxlength="60"
+             role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list">
+      <div class="suggest" id="suggest" role="listbox" aria-label="Resultados de búsqueda" hidden></div>
+    </form>
+
+    <div class="top-right">
+      <span class="level-chip" id="level-chip" title="Tu nivel">
+        <img class="ico" src="assets/icons/gold/trophy.svg" width="18" height="18" alt="">
+        <span class="txt">Nivel</span> <span id="level-num">1</span>
+      </span>
+      <div class="menu-wrap">
+        <button class="profile-btn" id="btn-profile" type="button" aria-label="Mi perfil" aria-haspopup="true" aria-expanded="false" aria-controls="profile-menu"></button>
+        <div class="dropdown" id="profile-menu" hidden>
+          <div class="who"><b id="pm-name">usuario</b><span id="pm-level">Nivel 1</span></div>
+          <button class="menu-item" type="button" id="pm-edit">
+            <img class="ico" src="assets/icons/white/pencil.svg" width="20" height="20" alt="">Editar perfil
+          </button>
+          <button class="menu-item" type="button" id="pm-mine">
+            <img class="ico" src="assets/icons/white/package.svg" width="20" height="20" alt="">Mi colección
+          </button>
+          <button class="menu-item" type="button" id="pm-verify">
+            <img class="ico" src="assets/icons/green/badge-check.svg" width="20" height="20" alt="">Verificar mi perfil
+          </button>
+          <button class="menu-item" type="button" id="pm-pay">
+            <img class="ico" src="assets/icons/white/banknote.svg" width="20" height="20" alt="">Mis datos de cobro
+          </button>
+          <button class="menu-item" type="button" id="pm-logout">
+            <img class="ico" src="assets/icons/pink/log-out.svg" width="20" height="20" alt="">Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MENÚ DESPLEGABLE -->
+  <div class="scrim" id="scrim"></div>
+  <nav class="drawer" id="drawer" aria-label="Menú principal">
+    <div class="drawer-head">
+      <span class="brand" style="font-family:var(--font-pixel);font-weight:700;font-size:1.2rem;color:var(--teal);text-shadow:2px 2px 0 #2b2bd9">Collection Quest</span>
+      <button class="icon-btn" id="btn-close-menu" type="button" aria-label="Cerrar menú">
+        <img class="ico" src="assets/icons/white/x.svg" width="22" height="22" alt="">
+      </button>
+    </div>
+
+    <p class="nav-label">Explorar</p>
+    <button class="nav-item" type="button" data-view="todos">
+      <img class="ico" src="assets/icons/white/layout-grid.svg" width="22" height="22" alt="">Todos los artículos
+    </button>
+    <button class="nav-item" type="button" data-view="venta">
+      <img class="ico" src="assets/icons/green/tag.svg" width="22" height="22" alt="">Venta
+    </button>
+    <button class="nav-item" type="button" data-view="intercambio">
+      <img class="ico" src="assets/icons/blue/arrow-left-right.svg" width="22" height="22" alt="">Intercambio
+    </button>
+    <button class="nav-item" type="button" data-view="exhibicion">
+      <img class="ico" src="assets/icons/purple/eye.svg" width="22" height="22" alt="">Exhibición
+    </button>
+    <button class="nav-item" type="button" data-view="subastas">
+      <img class="ico" src="assets/icons/pink/gavel.svg" width="22" height="22" alt="">Subastas
+    </button>
+    <button class="nav-item" type="button" data-view="personas">
+      <img class="ico" src="assets/icons/white/users.svg" width="22" height="22" alt="">Coleccionistas
+    </button>
+    <button class="nav-item" type="button" data-view="ranking">
+      <img class="ico" src="assets/icons/gold/trophy.svg" width="22" height="22" alt="">Ranking
+    </button>
+
+    <p class="nav-label">Mío</p>
+    <button class="nav-item" type="button" data-view="mia">
+      <img class="ico" src="assets/icons/gold/package.svg" width="22" height="22" alt="">Mi colección
+    </button>
+    <button class="nav-item" type="button" data-view="amigos">
+      <img class="ico" src="assets/icons/white/user-check.svg" width="22" height="22" alt="">Amigos
+      <span class="count alert" id="cnt-amigos" hidden></span>
+    </button>
+    <button class="nav-item" type="button" data-view="operaciones">
+      <img class="ico" src="assets/icons/white/handshake.svg" width="22" height="22" alt="">Ventas e intercambios
+      <span class="count alert" id="cnt-operaciones" hidden></span>
+    </button>
+    <button class="nav-item" type="button" id="nav-add">
+      <img class="ico" src="assets/icons/pink/plus.svg" width="22" height="22" alt="">Registrar artículo
+    </button>
+
+    <div id="nav-admin" hidden>
+      <p class="nav-label">Administración</p>
+      <button class="nav-item" type="button" data-view="admin">
+        <img class="ico" src="assets/icons/green/shield-check.svg" width="22" height="22" alt="">Verificaciones
+        <span class="count alert" id="cnt-admin" hidden></span>
+      </button>
+    </div>
+
+    <div class="drawer-user" id="drawer-user"></div>
+  </nav>
+
+  <!-- CONTENIDO -->
+  <main class="content" id="content">
+    <div class="view-head">
+      <div>
+        <h1 id="view-title">Todos los artículos</h1>
+        <p id="view-sub"></p>
+      </div>
+    </div>
+
+    <!-- Pantallas con lista de artículos -->
+    <section id="items-panel">
+      <div class="strip" id="people-strip" hidden></div>
+
+      <div class="toolbar">
+        <div class="chips" id="rarity-chips" role="group" aria-label="Filtrar por rareza"></div>
+        <label class="sr-only" for="filter-category">Categoría</label>
+        <select class="input filter" id="filter-category"></select>
+        <label class="sr-only" for="sort">Ordenar por</label>
+        <select class="input sort" id="sort">
+          <option value="recientes">Más recientes</option>
+          <option value="rareza">Mayor rareza</option>
+          <option value="valor">Mayor valor</option>
+          <option value="nombre">Nombre (A–Z)</option>
+        </select>
+      </div>
+
+      <div class="grid" id="grid" aria-live="polite"></div>
+      <div class="more"><button class="btn btn-ghost" id="btn-more" type="button" hidden>Cargar más</button></div>
+    </section>
+
+    <!-- Pantallas especiales (perfil, ranking, amigos, operaciones...) -->
+    <section id="custom-panel" hidden></section>
+  </main>
+
+  <button class="fab" id="fab-add" type="button" aria-label="Registrar nuevo artículo" title="Registrar artículo">
+    <img class="ico" src="assets/icons/dark/plus.svg" width="32" height="32" alt="">
+  </button>
+
+  <!-- DIÁLOGO: registrar / editar artículo -->
+  <dialog id="dlg-item" aria-labelledby="item-title">
+    <div class="dlg-head">
+      <h2 id="item-title">Registrar artículo</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Cerrar">
+        <img class="ico" src="assets/icons/white/x.svg" width="22" height="22" alt="">
+      </button>
+    </div>
+    <form class="dlg-body" id="item-form" novalidate>
+      <div class="form-error" id="item-error" role="alert"></div>
+
+      <p class="label" style="font-weight:600;margin-bottom:6px">Foto del artículo <span class="req">*</span></p>
+      <div class="photo-drop" id="photo-drop"></div>
+      <div class="photo-actions">
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-gallery">
+          <img class="ico" src="assets/icons/white/image.svg" width="18" height="18" alt="">Elegir de la galería
+        </button>
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-camera">
+          <img class="ico" src="assets/icons/white/camera.svg" width="18" height="18" alt="">Tomar foto
+        </button>
+      </div>
+      <input type="file" id="file-gallery" accept="image/*" hidden>
+      <input type="file" id="file-camera" accept="image/*" capture="environment" hidden>
+
+      <div class="field">
+        <label for="item-name">Nombre del artículo <span class="req">*</span></label>
+        <input class="input" id="item-name" maxlength="80" placeholder="Ej. Charizard holo 1999" required>
+      </div>
+
+      <div class="field">
+        <span class="label" id="lbl-cat">Categoría <span class="req">*</span></span>
+        <div class="cat-grid" role="radiogroup" aria-labelledby="lbl-cat" id="cat-grid"></div>
+      </div>
+
+      <div class="field">
+        <label for="item-value">Valor estimado ($) <span class="req">*</span></label>
+        <input class="input" id="item-value" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+        <span class="hint">Con este valor el sistema decide la rareza.</span>
+      </div>
+
+      <div class="rarity-preview" id="rarity-preview"></div>
+
+      <div class="field">
+        <span class="label" id="lbl-listing">¿Qué quieres hacer con él?</span>
+        <div class="choice-row four" role="radiogroup" aria-labelledby="lbl-listing">
+          <div class="choice">
+            <input type="radio" name="listing" id="l-exhibicion" value="exhibicion" checked>
+            <label for="l-exhibicion"><img class="ico" src="assets/icons/purple/eye.svg" width="24" height="24" alt="">Exhibirlo</label>
+          </div>
+          <div class="choice">
+            <input type="radio" name="listing" id="l-venta" value="venta">
+            <label for="l-venta"><img class="ico" src="assets/icons/green/tag.svg" width="24" height="24" alt="">Venderlo</label>
+          </div>
+          <div class="choice">
+            <input type="radio" name="listing" id="l-intercambio" value="intercambio">
+            <label for="l-intercambio"><img class="ico" src="assets/icons/blue/arrow-left-right.svg" width="24" height="24" alt="">Intercambiarlo</label>
+          </div>
+          <div class="choice">
+            <input type="radio" name="listing" id="l-subasta" value="subasta">
+            <label for="l-subasta"><img class="ico" src="assets/icons/pink/gavel.svg" width="24" height="24" alt="">Subastarlo</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="au-fields" id="auction-fields" hidden>
+        <div class="fields-2">
+          <div class="field">
+            <label for="au-start">Precio inicial ($) <span class="req">*</span></label>
+            <input class="input" id="au-start" type="number" min="1" step="0.01" inputmode="decimal" placeholder="0.00">
+          </div>
+          <div class="field">
+            <label for="au-hours">Duración</label>
+            <select class="input" id="au-hours">
+              <option value="1">1 hora</option>
+              <option value="3">3 horas</option>
+              <option value="6">6 horas</option>
+              <option value="12">12 horas</option>
+              <option value="24" selected>1 día</option>
+              <option value="72">3 días</option>
+              <option value="168">7 días</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint">Cada puja debe superar a la anterior por el 5% del precio inicial. Si alguien puja en los últimos 2 minutos, la subasta se alarga 2 minutos. Con pujas ya no se puede cancelar.</p>
+      </div>
+
+      <div class="field">
+        <label for="item-desc">Descripción corta</label>
+        <textarea class="input" id="item-desc" maxlength="400" placeholder="Estado, año, edición, detalles que importen…"></textarea>
+        <span class="counter" id="desc-count">0 / 400</span>
+      </div>
+
+      <div class="dlg-actions">
+        <button class="btn btn-ghost" type="button" data-close>Cancelar</button>
+        <button class="btn btn-green" type="submit" id="item-submit">Guardar artículo</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIÁLOGO: cámara -->
+  <dialog id="dlg-camera" aria-label="Tomar foto">
+    <div class="dlg-head">
+      <h2>Tomar foto</h2>
+      <button class="icon-btn" type="button" id="cam-close" aria-label="Cerrar cámara">
+        <img class="ico" src="assets/icons/white/x.svg" width="22" height="22" alt="">
+      </button>
+    </div>
+    <div class="dlg-body">
+      <video class="cam-video" id="cam-video" autoplay playsinline muted></video>
+      <div class="dlg-actions" style="justify-content:center;margin-top:16px">
+        <button class="btn btn-pink" type="button" id="cam-shot">
+          <img class="ico" src="assets/icons/white/camera.svg" width="22" height="22" alt="">Capturar
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- DIÁLOGO: detalle de artículo -->
+  <dialog id="dlg-detail" aria-label="Detalle del artículo"></dialog>
+
+  <!-- DIÁLOGO: editar perfil -->
+  <dialog id="dlg-profile" aria-labelledby="profile-title">
+    <div class="dlg-head">
+      <h2 id="profile-title">Editar perfil</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Cerrar">
+        <img class="ico" src="assets/icons/white/x.svg" width="22" height="22" alt="">
+      </button>
+    </div>
+    <form class="dlg-body" id="profile-form" novalidate>
+      <div class="form-error" id="profile-error" role="alert"></div>
+
+      <p class="label" style="font-weight:600;margin-bottom:6px">Banner</p>
+      <div class="banner-prev" id="pf-banner"></div>
+      <div class="photo-actions" style="margin-top:0">
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-banner">
+          <img class="ico" src="assets/icons/white/image.svg" width="18" height="18" alt="">Cambiar banner
+        </button>
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-banner-remove">
+          <img class="ico" src="assets/icons/white/trash-2.svg" width="18" height="18" alt="">Quitar banner
+        </button>
+      </div>
+      <input type="file" id="file-banner" accept="image/*" hidden>
+
+      <div class="profile-head">
+        <div id="profile-avatar"></div>
+        <div>
+          <p class="level" id="profile-level"></p>
+          <button class="btn btn-ghost btn-sm" type="button" id="btn-avatar" style="margin-top:8px">
+            <img class="ico" src="assets/icons/white/camera.svg" width="18" height="18" alt="">Cambiar avatar
+          </button>
+          <input type="file" id="file-avatar" accept="image/*" hidden>
+        </div>
+      </div>
+      <div class="field">
+        <span class="label" id="lbl-ring">Color del aro de tu avatar</span>
+        <div class="swatches" id="ring-swatches" role="radiogroup" aria-labelledby="lbl-ring"></div>
+        <div class="color-row">
+          <label class="sr-only" for="pf-ring">Elegir otro color</label>
+          <input type="color" id="pf-ring" value="#2bf59a">
+          <button class="btn btn-ghost btn-sm" type="button" id="ring-reset">Color original</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="pf-username">Nombre de usuario</label>
+        <input class="input" id="pf-username" maxlength="24" required>
+      </div>
+      <div class="field">
+        <label for="pf-bio">Sobre ti</label>
+        <textarea class="input" id="pf-bio" maxlength="300" placeholder="Cuéntales a los demás qué coleccionas."></textarea>
+        <span class="counter" id="bio-count">0 / 300</span>
+      </div>
+      <div class="field">
+        <label for="pf-contact">Contacto para ventas e intercambios</label>
+        <input class="input" id="pf-contact" maxlength="120" placeholder="WhatsApp, correo o red social">
+        <span class="hint">Se muestra en tus artículos de venta e intercambio. Déjalo vacío si prefieres no compartirlo.</span>
+      </div>
+      <div class="dlg-actions">
+        <button class="btn btn-ghost" type="button" data-close>Cancelar</button>
+        <button class="btn btn-green" type="submit" id="profile-submit">Guardar cambios</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+  <!-- Los módulos se registran primero y app.js los arranca -->
+  <script src="assets/js/social.js"></script>
+  <script src="assets/js/orders.js"></script>
+  <script src="assets/js/verify.js"></script>
+  <script src="assets/js/auctions.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

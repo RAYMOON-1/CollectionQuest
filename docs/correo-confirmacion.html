@@ -1,0 +1,26 @@
+<!-- Plantilla del correo de confirmación (en español).
+     Supabase > Authentication > Emails > Templates > "Confirm signup"
+     Asunto sugerido:  Confirma tu cuenta de Collection Quest
+     Pega TODO lo de abajo en el cuerpo del mensaje (no cambies {{ .ConfirmationURL }}). -->
+<div style="background:#07061a;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;background:#120f33;border:3px solid #2bf59a;border-radius:20px;padding:28px;color:#eef0ff;text-align:center;">
+    <h1 style="margin:0 0 6px;font-size:26px;color:#19c5c0;letter-spacing:1px;">COLLECTION QUEST</h1>
+    <p style="margin:0 0 22px;color:#8a90b8;font-size:14px;">Tu colección, tu estatus, tu comunidad</p>
+    <h2 style="margin:0 0 12px;font-size:20px;">¡Un paso más para entrar!</h2>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.5;color:#d3d7f5;">
+      Recibimos una solicitud para crear una cuenta con este correo.
+      Toca el botón para confirmar que es tuyo y activar tu cuenta.
+    </p>
+    <a href="{{ .ConfirmationURL }}"
+       style="display:inline-block;background:#2bf59a;color:#06201a;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 28px;border-radius:10px;">
+      Confirmar mi correo
+    </a>
+    <p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#8a90b8;">
+      Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+      <span style="word-break:break-all;">{{ .ConfirmationURL }}</span>
+    </p>
+    <p style="margin:18px 0 0;font-size:12px;color:#8a90b8;">
+      ¿No fuiste tú? Ignora este mensaje: la cuenta no se activará y se borrará sola.
+    </p>
+  </div>
+</div>
