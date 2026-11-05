@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://dns.google; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Collection Quest | Tu colección, tu estatus, tu comunidad</title>
+  <meta name="description" content="Plataforma web para coleccionistas: exhibe, vende o intercambia tus piezas y sube de nivel según su rareza.">
+  <meta name="theme-color" content="#07061a">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div class="landing">
+    <header class="landing-top">
+      <a class="brand-mini" href="index.html">
+        <img class="ico" src="assets/icons/green/swords.svg" width="28" height="28" alt="">
+        Collection Quest
+      </a>
+      <a class="btn btn-ghost btn-sm" id="top-login" href="auth.html?modo=login">Iniciar sesión</a>
+    </header>
+
+    <main>
+      <section class="hero-panel" aria-labelledby="titulo">
+        <h1 class="wordmark" id="titulo"><span>Collection</span><span>Quest</span></h1>
+        <p class="hero-tag">Tu colección, tu estatus, tu comunidad. Registra tus piezas, deja que el sistema les asigne su rareza y sube de nivel.</p>
+        <div class="hero-actions" id="hero-actions">
+          <a class="btn btn-pink" href="auth.html?modo=registro">
+            <img class="ico" src="assets/icons/white/user-plus.svg" width="22" height="22" alt="">
+            Crear cuenta
+          </a>
+          <a class="btn" href="auth.html?modo=login">
+            <img class="ico" src="assets/icons/white/log-in.svg" width="22" height="22" alt="">
+            Iniciar sesión
+          </a>
+        </div>
+      </section>
+      <div class="ground" aria-hidden="true"></div>
+
+      <section class="land-section" aria-labelledby="h-modos">
+        <h2 id="h-modos">Cada pieza tiene su lugar</h2>
+        <p>Al registrar un artículo eliges qué quieres hacer con él. Puedes cambiarlo cuando quieras.</p>
+        <div class="modes">
+          <article class="mode-card">
+            <img class="ico" src="assets/icons/green/tag.svg" width="34" height="34" alt="">
+            <h3>Venta</h3>
+            <p>Publica lo que quieres vender. Los interesados ven tu contacto en la pieza.</p>
+          </article>
+          <article class="mode-card">
+            <img class="ico" src="assets/icons/blue/arrow-left-right.svg" width="34" height="34" alt="">
+            <h3>Intercambio</h3>
+            <p>Propón trueques con otros coleccionistas y encuentra la pieza que te falta.</p>
+          </article>
+          <article class="mode-card">
+            <img class="ico" src="assets/icons/purple/eye.svg" width="34" height="34" alt="">
+            <h3>Exhibición</h3>
+            <p>Muestra tu museo personal sin venderlo. También suma puntos y nivel.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="land-section" aria-labelledby="h-rareza">
+        <h2 id="h-rareza">La rareza la decide el sistema</h2>
+        <p>Según el valor que declaras, cada pieza cae en uno de cinco niveles de rareza y suma puntos a tu perfil.</p>
+        <div class="ladder" id="ladder"></div>
+      </section>
+
+      <section class="land-section" id="featured-section" hidden aria-labelledby="h-destacadas">
+        <h2 id="h-destacadas">Piezas destacadas de la comunidad</h2>
+        <p>Las de mayor rareza publicadas hasta ahora.</p>
+        <div class="grid" id="featured"></div>
+      </section>
+    </main>
+
+    <footer class="landing-footer">
+      <p>Collection Quest · Proyecto de Ingeniería de Software · Tecnológico Superior de Jalisco</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+  <script src="assets/js/landing.js"></script>
+</body>
+</html>
