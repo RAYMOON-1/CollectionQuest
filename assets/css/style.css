@@ -788,3 +788,30 @@ select.input { cursor: pointer; }
   .ship-row { grid-template-columns: 1fr; }
   .contact-links { margin-left: 0; margin-top: 6px; display: flex; }
 }
+
+
+/* =====================================================================
+   PRECIO ESTIMADO EN LÍNEA, CATEGORÍAS MÚLTIPLES Y UNIDADES
+   ===================================================================== */
+.estimate-box { margin-bottom: 18px; }
+.est { padding: 14px; border: 2px solid var(--line); border-radius: 14px; background: var(--bg-2); font-size: .92rem; }
+.est-ok { border-color: var(--green); background: rgba(43, 245, 154, .05); }
+.est-none, .est-error { border-color: var(--gold); background: rgba(255, 194, 26, .06); }
+.est-loading { border-color: var(--violet); }
+.est-title { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 1.05rem; }
+.est p { margin: 6px 0; }
+.est-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.est-units { padding: 8px 10px; border: 2px dashed var(--t-epica); border-radius: 10px; }
+.est-src { margin: 8px 0; }
+.est-src summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+.est-src ul { margin: 8px 0 0; padding-left: 18px; color: #c9cdf0; }
+.est-src li { margin-bottom: 4px; overflow-wrap: anywhere; }
+.est-src a { color: var(--green); }
+.sg-frame { width: 100%; height: 96px; margin: 8px 0; border: 0; border-radius: 10px; background: #fff; }
+.spin { display: inline-block; width: 16px; height: 16px; margin-right: 8px; vertical-align: -3px; border: 3px solid var(--line); border-top-color: var(--green); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cat-grid .choice input:disabled + label { opacity: .4; cursor: not-allowed; }
+#cat-count { margin-left: 6px; font-weight: 500; }
+.units-line { color: var(--muted); font-size: .78rem; }
+.badge-more { color: var(--muted); }
+.src-badge { padding: 3px 10px; border: 2px solid var(--bc, var(--line)); border-radius: 999px; font-size: .8rem; font-weight: 700; color: var(--bc, var(--text)); }

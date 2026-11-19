@@ -19,6 +19,7 @@ rareza, agrega amigos y compite en el ranking.
 - Mensajes de advertencia para confirmar toda compra, venta, intercambio, subasta y puja.
 - Buscador principal solo de **artículos** (resultados en la misma página). En la sección Coleccionistas, la misma barra busca solo **coleccionistas**.
 - Inicio de sesión con **correo, Google, Facebook y Apple**.
+- **Precio estimado en línea** (búsqueda en internet, tope de estimado + $20), **1 a 3 categorías** por artículo y **rareza según las unidades que existen** (una de 10, una de 100, una de 500...). Guía: `docs/PRECIOS-EN-LINEA.md`.
 - Color del aro del avatar editable, barras de desplazamiento con estilo y menú con desplazamiento.
 - Verificación de perfil con identificación oficial, revisada por un administrador (las fotos se borran al revisar).
 
@@ -55,7 +56,7 @@ assets/
   js/landing.js  js/auth.js  js/confirmado.js
   icons/<color>/   ← iconos SVG locales (sin emojis)
 sql/schema.sql     ← tablas, triggers, seguridad y storage (se puede volver a correr)
-sql/tests.sql      ← 169 pruebas automáticas
+sql/tests.sql      ← 205 pruebas automáticas
 docs/              ← ERD y entregables por semana
 ```
 

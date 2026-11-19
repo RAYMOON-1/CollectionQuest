@@ -2,7 +2,7 @@
   const {
     $, $$, esc, icon, sb, configured,
     RARITY, RARITY_ORDER, LISTING, CATEGORIES, CATEGORY_ORDER,
-    money, levelInfo, rarityFromValue, searchTokens, fmtCountdown, contactHTML,
+    money, levelInfo, rarityFromUnits, unitsText, normText, searchTokens, fmtCountdown, contactHTML,
     safeImageUrl, avatarHTML, verifiedBadge,
     compressImage, uploadImage, removeImageByUrl,
     friendlyError, toast
@@ -34,7 +34,7 @@
      ------------------------------------------------------------------ */
   const PAGE_SIZE = 24;
   const ITEM_SELECT =
-    'id, owner_id, name, description, value, category, listing, rarity, points, image_url, created_at, ' +
+    'id, owner_id, name, description, value, category, categories, units, value_source, estimated_value, listing, rarity, points, image_url, created_at, ' +
     'owner:profiles!owner_id(id, username, avatar_url, avatar_color, level, contact, verified), ' +
     'auction:auctions(current_bid, bid_count, ends_at, status, start_price)';
   const PROFILE_SELECT = 'id, username, avatar_url, avatar_color, banner_url, bio, level, points, verified, role, created_at';
@@ -447,7 +447,8 @@
   function cardHTML(it) {
     const r = RARITY[it.rarity] || RARITY.comun;
     const l = LISTING[it.listing] || LISTING.exhibicion;
-    const c = CATEGORIES[it.category];
+    const cats = (it.categories && it.categories.length ? it.categories : [it.category]).map((k) => CATEGORIES[k]).filter(Boolean);
+    const c = cats[0];
     const img = safeImageUrl(it.image_url);
     const au = it.listing === 'subasta' && it.auction && it.auction.status === 'activa' ? it.auction : null;
     return `
@@ -458,11 +459,12 @@
             ? `<img class="photo" loading="lazy" src="${esc(img)}" alt="">`
             : icon('package', 'muted', 52)}
           <span class="badge badge-rarity">${icon('gem', r.color, 14)}${esc(r.label)}</span>
-          ${c ? `<span class="badge badge-cat">${icon(c.icon, 'white', 14)}${esc(c.label)}</span>` : ''}
+          ${c ? `<span class="badge badge-cat">${icon(c.icon, 'white', 14)}${esc(c.label)}${cats.length > 1 ? ` <span class="badge-more">+${cats.length - 1}</span>` : ''}</span>` : ''}
           <span class="badge badge-listing l-${esc(it.listing)}">${icon(l.icon, l.color, 14)}${esc(l.label)}</span>
         </div>
         <div class="card-body">
           <h3>${esc(it.name)}</h3>
+          ${it.units ? `<p class="units-line">${esc(unitsText(it.units))}</p>` : ''}
           ${au ? `<p class="au-line">${icon('timer', 'pink', 14)}<span class="countdown" data-ends="${esc(au.ends_at)}"></span></p>` : ''}
           <div class="card-foot">
             ${au
@@ -507,7 +509,7 @@
       let qb = sb.from('items').select(ITEM_SELECT, { count: 'exact' });
       qb = opts.scope(qb);
       if (f.rarity) qb = qb.eq('rarity', f.rarity);
-      if (f.category) qb = qb.eq('category', f.category);
+      if (f.category) qb = qb.contains('categories', [f.category]);
       searchTokens(f.q).forEach((t) => { qb = qb.ilike('search_text', `%${t}%`); });
 
       if (f.sort === 'rareza') qb = qb.order('points', { ascending: false }).order('value', { ascending: false });
@@ -643,7 +645,12 @@
     const dlg = $('#dlg-detail');
     const r = RARITY[it.rarity] || RARITY.comun;
     const l = LISTING[it.listing] || LISTING.exhibicion;
-    const c = CATEGORIES[it.category];
+    const cats = (it.categories && it.categories.length ? it.categories : [it.category]).map((x) => CATEGORIES[x]).filter(Boolean);
+    const srcBadge = it.value_source === 'estimado'
+      ? `<span class="src-badge" style="--bc:var(--green)">${icon('badge-check', 'green', 14)}Precio estimado en línea</span>`
+      : it.value_source === 'sin_resultados'
+        ? `<span class="src-badge" style="--bc:var(--gold)">${icon('info', 'gold', 14)}Sin precios en línea</span>`
+        : `<span class="src-badge" style="--bc:var(--muted)">${icon('info', 'muted', 14)}Precio sin verificar</span>`;
     const img = safeImageUrl(it.image_url);
     const mine = it.owner_id === uid;
     const isAdmin = state.profile.role === 'admin';
@@ -673,10 +680,12 @@
           </div>
           <div class="meta">
             <span class="badge" style="--bc:${r.hex}">${icon('gem', r.color, 14)}${esc(r.label)}, +${it.points} puntos</span>
-            ${c ? `<span class="badge">${icon(c.icon, 'white', 14)}${esc(c.label)}</span>` : ''}
+            ${cats.map((c) => `<span class="badge">${icon(c.icon, 'white', 14)}${esc(c.label)}</span>`).join('')}
             <span class="badge l-${esc(it.listing)}" style="--bc:${it.listing === 'venta' ? 'var(--green)' : it.listing === 'intercambio' ? 'var(--t-rara)' : 'var(--t-epica)'}">${icon(l.icon, l.color, 14)}${esc(l.label)}</span>
           </div>
           <p class="price">${money(it.value)}</p>
+          <p class="units-line" style="margin:-2px 0 6px">${esc(unitsText(it.units))}</p>
+          <p style="margin-bottom:8px">${srcBadge}</p>
           <p class="desc">${it.description ? esc(it.description) : 'Sin descripción.'}</p>
           <a class="owner-box" href="#perfil/${esc(encodeURIComponent(it.owner?.username || ''))}" style="text-decoration:none;color:inherit">
             ${avatarHTML(it.owner, 44)}
@@ -752,9 +761,17 @@
 
   $('#cat-grid').innerHTML = CATEGORY_ORDER.map((k) => `
     <div class="choice">
-      <input type="radio" name="category" id="c-${k}" value="${k}">
+      <input type="checkbox" name="category" id="c-${k}" value="${k}">
       <label for="c-${k}">${icon(CATEGORIES[k].icon, 'white', 22)}${esc(CATEGORIES[k].label)}</label>
     </div>`).join('');
+
+  const selectedCats = () => $$('input[name="category"]:checked').map((c) => c.value);
+  // Máximo 3: al llegar a 3 se bloquean las demás
+  function syncCats() {
+    const n = selectedCats().length;
+    $$('#cat-grid input').forEach((i) => { i.disabled = !i.checked && n >= 3; });
+    $('#cat-count').textContent = `${n} de 3 elegidas`;
+  }
 
   function showItemError(msg) {
     itemError.innerHTML = `${icon('circle-alert', 'pink', 18)}<span>${esc(msg)}</span>`;
@@ -776,12 +793,12 @@
   }
 
   function updateRarityPreview() {
-    const v = parseFloat($('#item-value').value);
-    const key = rarityFromValue(Number.isFinite(v) ? v : 0);
-    const r = RARITY[key];
+    const raw = $('#item-units').value.trim();
+    const u = raw === '' ? null : Number(raw);
+    const r = RARITY[rarityFromUnits(u)];
     const box = $('#rarity-preview');
     box.style.setProperty('--tier', r.hex);
-    box.innerHTML = `${icon('gem', r.color, 30)}<div><b>${esc(r.label)}</b><small>Rareza estimada, +${r.points} puntos</small></div>`;
+    box.innerHTML = `${icon('gem', r.color, 30)}<div><b>${esc(r.label)}</b><small>${esc(unitsText(u))}, +${r.points} puntos</small></div>`;
   }
   function updateDescCount() {
     $('#desc-count').textContent = `${$('#item-desc').value.length} / 400`;
@@ -813,22 +830,30 @@
       $('#item-desc').value = item.description || '';
       const radio = $(`input[name="listing"][value="${item.listing}"]`);
       if (radio) radio.checked = true;
-      const cat = $(`input[name="category"][value="${item.category}"]`);
-      if (cat) cat.checked = true;
+      (item.categories && item.categories.length ? item.categories : [item.category]).forEach((k) => {
+        const cat = $(`input[name="category"][value="${k}"]`);
+        if (cat) cat.checked = true;
+      });
+      $('#item-units').value = item.units || '';
       renderPhoto(safeImageUrl(item.image_url));
     } else {
       renderPhoto(null);
     }
+    syncCats();
+    resetEstimate();
+    if (item) valueDirty = true;
     updateRarityPreview();
     updateDescCount();
     syncAuctionFields();
     closeDrawer(false);
     dlgItem.showModal();
     $('#item-name').focus({ preventScroll: true });
+    if (item) estAutoDone = currentSig();   // al editar no se busca sola: solo con el botón
   }
   A.openItemDialog = openItemDialog;
 
-  $('#item-value').addEventListener('input', updateRarityPreview);
+  $('#item-units').addEventListener('input', () => { updateRarityPreview(); renderEstimate(); });
+  $('#item-value').addEventListener('input', () => { valueDirty = true; });
   $('#item-desc').addEventListener('input', updateDescCount);
 
   async function setPhoto(fileOrBlob) {
@@ -838,6 +863,8 @@
       photoUrl = URL.createObjectURL(photoBlob);
       renderPhoto(photoUrl);
       itemError.classList.remove('show');
+      try { smallB64 = await blobToBase64(await compressImage(photoBlob, 768, 0.8)); } catch (e) { smallB64 = null; }
+      scheduleAuto();
     } catch (err) {
       showItemError(friendlyError(err));
     }
@@ -902,6 +929,182 @@
   });
 
   /* ----- Guardar ----- */
+  /* ----- Precio estimado en línea ----- */
+  let est = null;            // última búsqueda recibida
+  let estSig = '';           // lo que se buscó (nombre + categorías)
+  let estLoading = false;
+  let estAutoDone = '';      // firma de la última búsqueda automática (una sola vez por firma)
+  let estError = '';
+  let estTimer = null;
+  let smallB64 = null;       // foto chica para la búsqueda
+  let valueDirty = false;    // si la persona ya escribió el valor a mano
+
+  const currentSig = () => normText($('#item-name').value) + '|' + selectedCats().slice().sort().join(',');
+  const hasPhotoNow = () => !!photoBlob || !!(editing && editing.image_url);
+  const canEstimate = () => $('#item-name').value.trim().length >= 2 && selectedCats().length >= 1 && hasPhotoNow();
+  const estMatches = () => !!est && estSig === currentSig();
+  const estUsable = () => estMatches() && est.found;
+  const KIND_LABEL = { vendido: 'vendido', publicado: 'publicado', guia: 'guía de precios' };
+  const isHttp = (u) => /^https?:\/\//.test(String(u || ''));
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1]);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
+
+  function resetEstimate() {
+    clearTimeout(estTimer);
+    est = null; estSig = ''; estLoading = false; estAutoDone = ''; estError = ''; smallB64 = null; valueDirty = false;
+    renderEstimate();
+    applyValueLimit();
+  }
+
+  function applyValueLimit() {
+    const input = $('#item-value');
+    const hint = $('#value-hint');
+    if (estUsable()) {
+      input.max = String(est.max_allowed);
+      hint.textContent = `Máximo permitido: ${money(est.max_allowed)} (precio estimado ${money(est.typical)} más ${money(est.max_over)}).`;
+    } else {
+      input.removeAttribute('max');
+      hint.textContent = (estMatches() && !est.found)
+        ? 'No hubo precios confiables en línea: tu valor quedará marcado como «sin verificar».'
+        : 'Se llena con el precio estimado en línea y no puede pasar de ese estimado más unos pesos de margen.';
+    }
+  }
+
+  function renderEstimate() {
+    const box = $('#estimate-box');
+    if (!box) return;
+    const searchBtn = (label, id = 'est-search') =>
+      `<div class="est-actions"><button class="btn btn-ghost btn-sm" type="button" id="${id}">${icon('search', 'white', 16)}${label}</button></div>`;
+
+    if (estLoading) {
+      box.innerHTML = `<div class="est est-loading"><p><span class="spin"></span><b>Buscando precios en internet…</b></p>
+        <p class="hint">Puede tardar hasta un minuto. Mientras tanto puedes seguir llenando el formulario.</p></div>`;
+      return;
+    }
+    if (estError) {
+      box.innerHTML = `<div class="est est-error"><p class="est-title">${icon('info', 'gold', 20)}<b>No se pudo buscar el precio</b></p>
+        <p>${esc(estError)}</p><p class="hint">Puedes poner el precio a mano: quedará marcado como «sin verificar».</p>${canEstimate() ? searchBtn('Intentar de nuevo') : ''}</div>`;
+      return;
+    }
+    if (est && !estMatches()) {
+      box.innerHTML = `<div class="est est-none"><p class="est-title">${icon('info', 'gold', 20)}<b>Cambiaste el nombre o las categorías</b></p>
+        <p>El precio de arriba era de otra búsqueda. ${canEstimate() ? 'Se buscará otra vez en un momento, o hazlo ahora:' : 'Completa el nombre, las categorías y la foto.'}</p>${canEstimate() ? searchBtn('Buscar precio en línea') : ''}</div>`;
+      return;
+    }
+    if (est && est.found) {
+      const conf = est.confidence === 'alta' ? 'confianza alta' : 'confianza media';
+      const unitsFilled = $('#item-units').value.trim() !== '';
+      const srcs = (est.sources || []).map((x) => isHttp(x.uri)
+        ? `<li><a href="${esc(x.uri)}" target="_blank" rel="noopener noreferrer">${esc(x.title || 'fuente')}</a></li>` : `<li>${esc(x.title || '')}</li>`).join('');
+      const obs = (est.observations || []).map((o) => {
+        const t = `${money(o.price_mxn)}, ${KIND_LABEL[o.kind] || o.kind}, ${esc(o.source)}${o.date ? ' (' + esc(o.date) + ')' : ''}`;
+        return `<li>${isHttp(o.url) ? `<a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : t}</li>`;
+      }).join('');
+      box.innerHTML = `<div class="est est-ok">
+        <p class="est-title">${icon('badge-check', 'green', 20)}<b>Precio estimado en línea: ${money(est.typical)}</b></p>
+        <p class="hint">Rango ${money(est.low)} a ${money(est.high)}. Basado en ${est.sample_size} ${est.basis === 'vendido' ? 'ventas' : 'precios publicados'}, ${conf}${est.from_cache ? ' (resultado reciente guardado)' : ''}.</p>
+        <p>Tu valor puede ser como máximo <b>${money(est.max_allowed)}</b> (estimado más ${money(est.max_over)}).</p>
+        <div class="est-actions">
+          <button class="btn btn-green btn-sm" type="button" id="est-use">Usar ${money(est.typical)}</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="est-again">Buscar otra vez</button>
+        </div>
+        ${est.units_estimate && !unitsFilled ? `<p class="est-units">${icon('gem', 'purple', 16)} En línea encontramos que podrían existir unas <b>${Number(est.units_estimate).toLocaleString('es-MX')}</b> unidades${est.units_note ? ' (' + esc(est.units_note) + ')' : ''}.
+          <button class="btn btn-ghost btn-sm" type="button" id="est-units">Usar ${Number(est.units_estimate).toLocaleString('es-MX')}</button></p>` : ''}
+        ${(srcs || obs) ? `<details class="est-src"><summary>Fuentes y precios encontrados</summary>${obs ? `<ul>${obs}</ul>` : ''}${srcs ? `<ul>${srcs}</ul>` : ''}</details>` : ''}
+        ${est.search_entry_html ? `<iframe class="sg-frame" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${esc(est.search_entry_html)}" title="Sugerencias de búsqueda de Google"></iframe>` : ''}
+        <p class="hint">Es una estimación aproximada hecha con inteligencia artificial y búsqueda en internet: puede equivocarse.</p>
+      </div>`;
+      return;
+    }
+    if (est && !est.found) {
+      box.innerHTML = `<div class="est est-none"><p class="est-title">${icon('info', 'gold', 20)}<b>No encontramos precios confiables</b></p>
+        <p>${esc(est.message || '')}</p>${canEstimate() ? searchBtn('Buscar otra vez', 'est-again') : ''}</div>`;
+      return;
+    }
+    box.innerHTML = canEstimate()
+      ? `<div class="est"><p>${icon('search', 'muted', 18)} Busca el precio de este artículo en internet.</p>${searchBtn('Buscar precio en línea')}</div>`
+      : `<div class="est"><p class="hint">${icon('info', 'muted', 16)} Escribe el nombre, elige las categorías y agrega la foto: buscaremos el precio en internet automáticamente.</p></div>`;
+  }
+
+  async function estimateErrorMessage(err) {
+    const ctx = err && err.context;
+    const status = ctx && ctx.status;
+    try {
+      if (ctx && typeof ctx.json === 'function') {
+        const j = await ctx.json();
+        if (j && j.message) return j.message;
+      }
+    } catch (e) { /* sigue */ }
+    if (err && err.message === 'timeout') return 'La búsqueda tardó demasiado. Intenta de nuevo.';
+    if (status === 404) return 'La búsqueda de precios todavía no está activada en este proyecto.';
+    return 'No se pudo consultar el servicio de precios en este momento.';
+  }
+
+  async function runEstimate(force = false) {
+    if (estLoading || !canEstimate()) return;
+    const sig = currentSig();
+    estLoading = true;
+    estError = '';
+    renderEstimate();
+    try {
+      const body = { name: $('#item-name').value.trim(), categories: selectedCats() };
+      const u = parseInt($('#item-units').value, 10);
+      if (Number.isInteger(u) && u >= 1) body.units = u;
+      if (smallB64) body.image = { mime: 'image/jpeg', data: smallB64 };
+      if (force) body.force = true;
+      const res = await Promise.race([
+        sb.functions.invoke('estimate-price', { body }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 80000))
+      ]);
+      if (res.error) throw res.error;
+      if (!res.data || !res.data.ok || !res.data.estimate) throw new Error('Respuesta no válida');
+      est = res.data.estimate;
+      estSig = sig;
+      if (est.found && (!valueDirty || $('#item-value').value.trim() === '')) {
+        $('#item-value').value = est.typical;
+        valueDirty = false;
+      }
+    } catch (err) {
+      est = null;
+      estError = await estimateErrorMessage(err);
+    } finally {
+      estLoading = false;
+      renderEstimate();
+      applyValueLimit();
+    }
+  }
+
+  // Busca sola, una vez, cuando ya hay nombre, categorías y foto.
+  function scheduleAuto() {
+    clearTimeout(estTimer);
+    renderEstimate();
+    applyValueLimit();
+    estTimer = setTimeout(() => {
+      if (!dlgItem.open || estLoading || !canEstimate()) return;
+      const sig = currentSig();
+      if (sig === estAutoDone || estMatches()) return;
+      estAutoDone = sig;
+      runEstimate(false);
+    }, 900);
+  }
+  $('#item-name').addEventListener('input', scheduleAuto);
+  $('#cat-grid').addEventListener('change', () => { syncCats(); scheduleAuto(); });
+  $('#estimate-box').addEventListener('click', (e) => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.id === 'est-search') runEstimate(false);
+    else if (t.id === 'est-again') runEstimate(true);
+    else if (t.id === 'est-use' && est) { $('#item-value').value = est.typical; valueDirty = true; }
+    else if (t.id === 'est-units' && est) { $('#item-units').value = est.units_estimate; updateRarityPreview(); renderEstimate(); }
+  });
+
   itemForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     itemError.classList.remove('show');
@@ -910,7 +1113,13 @@
     const description = $('#item-desc').value.trim();
     const value = parseFloat($('#item-value').value);
     const listing = ($('input[name="listing"]:checked') || {}).value || 'exhibicion';
-    const category = ($('input[name="category"]:checked') || {}).value;
+    const categories = selectedCats();
+    const unitsRaw = $('#item-units').value.trim();
+    let units = null;
+    if (unitsRaw !== '') {
+      units = Number(unitsRaw);
+      if (!Number.isInteger(units) || units < 1) return showItemError('Las unidades deben ser un número entero de 1 en adelante.');
+    }
 
     const hasPhoto = !!photoBlob || !!(editing && editing.image_url);
     if (!hasPhoto) {
@@ -918,9 +1127,12 @@
       return showItemError('La foto del artículo es obligatoria.');
     }
     if (name.length < 2) return showItemError('Escribe el nombre del artículo (mínimo 2 letras).');
-    if (!category) return showItemError('Elige la categoría del artículo.');
+    if (!categories.length) return showItemError('Elige al menos una categoría (máximo 3).');
     if (!Number.isFinite(value) || value < 0) return showItemError('Escribe el valor estimado del artículo.');
     if (value > 9999999999) return showItemError('Ese valor es demasiado grande.');
+    if (estUsable() && value > est.max_allowed) {
+      return showItemError(`El valor no puede pasar de ${money(est.max_allowed)} (precio estimado ${money(est.typical)} más ${money(est.max_over)}).`);
+    }
 
     const isAuction = listing === 'subasta';
     const startPrice = parseFloat($('#au-start').value);
@@ -969,7 +1181,8 @@
         image_url = newUrl;
       }
 
-      const payload = { name, description, value, category, listing, image_url };
+      const payload = { name, description, value, category: categories[0], categories, units, listing, image_url };
+      if (estMatches()) payload.estimate_id = est.id;
       let saved;
       if (editing) {
         const { data, error } = await sb.from('items').update(payload).eq('id', editing.id).select('id, rarity, points').single();

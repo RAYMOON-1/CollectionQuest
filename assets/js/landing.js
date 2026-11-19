@@ -3,17 +3,13 @@
 
   /* ----- Escalera de rareza (sale de config.js) ----- */
   const ladder = $('#ladder');
-  ladder.innerHTML = RARITY_ORDER.map((key, i) => {
+  ladder.innerHTML = [...RARITY_ORDER].reverse().map((key) => {
     const r = RARITY[key];
-    const next = RARITY[RARITY_ORDER[i + 1]];
-    const range = next
-      ? `$${r.min.toLocaleString('es-MX')} a $${(next.min - 1).toLocaleString('es-MX')}`
-      : `$${r.min.toLocaleString('es-MX')} o más`;
     return `
       <article class="ladder-step" style="--tier:${r.hex}">
         ${icon('gem', r.color, 30)}
         <h3>${esc(r.label)}</h3>
-        <p>${range}<br><b>+${r.points} puntos</b></p>
+        <p>${esc(r.range)}<br><b>+${r.points} puntos</b></p>
       </article>`;
   }).join('');
 

@@ -6,7 +6,7 @@
 2. Abre tu proyecto > **SQL Editor** > *New query*, pega **todo** `sql/schema.sql` y dale **Run**. Es seguro correrlo sobre lo que ya tienes: agrega lo nuevo sin borrar tus datos.
    - Quien ya tenía transferencia guardada queda con "efectivo y transferencia" aceptados.
    - El enlace de pago ya no se usa (las operaciones viejas que lo usaron se siguen viendo).
-3. (Opcional) Pega `sql/tests.sql` y dale Run. Debe salir `TODAS LAS PRUEBAS PASARON (169 de 169)`. No deja datos de prueba.
+3. (Opcional) Pega `sql/tests.sql` y dale Run. Debe salir `TODAS LAS PRUEBAS PASARON (205 de 205)`. No deja datos de prueba.
 4. Hazte administrador (una sola vez, cambia el nombre por tu usuario):
    ```sql
    update public.profiles set role = 'admin' where username = 'tu_usuario';
@@ -23,6 +23,10 @@
 4. El correo que trae Supabase por defecto **manda muy pocos mensajes por hora** (solo para pruebas). Configura un SMTP propio en *Authentication > SMTP Settings* (Resend, Brevo o Gmail con contraseña de aplicación).
 5. **Google, Facebook y Apple**: sigue `docs/LOGIN-SOCIAL.md`. Mientras no esté listo uno, pon `false` en `AUTH_PROVIDERS` de `assets/js/config.js` para ocultar su botón.
 6. Lee `docs/SEGURIDAD.md` (5 minutos).
+
+## 2b. Precio en línea, categorías y rareza por unidades (nuevo)
+
+Sigue `docs/PRECIOS-EN-LINEA.md`: desplegar la función `estimate-price` en Supabase, poner el secreto `GEMINI_API_KEY` y, cuando ya funcione, activar `require_estimate`. El `schema.sql` de abajo ya trae todo lo de la base de datos.
 
 ## 3. Código (GitHub)
 

@@ -17,7 +17,7 @@ declare
   it_a uuid; it_b uuid; it_c uuid; it_d uuid; it_e uuid;
   ord uuid; ord2 uuid; ord3 uuid; fr uuid; ver uuid;
   it_f uuid; it_g uuid; it_h uuid; it_i uuid; it_j uuid; it_k uuid; au1 uuid; au2 uuid; au3 uuid;
-  au record; cnt int;
+  au record; cnt int; est_ok uuid; est_low uuid; xi uuid; msg text;
   n int; ok boolean; txt text; paths text[];
   prof record; it record; o record;
   img text := 'https://x.supabase.co/storage/v1/object/public/items/a.jpg';
@@ -80,28 +80,26 @@ begin
   -- ARTICULOS: foto y categoria obligatorias, rareza automatica
   ---------------------------------------------------------------------
   ok := false;
-  begin insert into public.items (owner_id, name, value, category) values (u1, 'Sin foto', 100, 'carta');
+  begin insert into public.items (owner_id, name, value, category, units) values (u1, 'Sin foto', 100, 'carta', null);
   exception when check_violation then ok := true; end;
   assert ok, 'T17 un articulo nuevo sin foto debe rechazarse';
 
   ok := false;
-  begin insert into public.items (owner_id, name, value, image_url) values (u1, 'Sin categoria', 100, img);
+  begin insert into public.items (owner_id, name, value, image_url, units) values (u1, 'Sin categoria', 100, img, null);
   exception when not_null_violation then ok := true; end;
   assert ok, 'T18 un articulo sin categoria debe rechazarse';
 
   ok := false;
-  begin insert into public.items (owner_id, name, value, category, image_url) values (u1, 'Raro', 100, 'trompo', img);
+  begin insert into public.items (owner_id, name, value, category, image_url, units) values (u1, 'Raro', 100, 'trompo', img, null);
   exception when invalid_text_representation then ok := true; end;
   assert ok, 'T19 una categoria inventada debe rechazarse';
 
-  insert into public.items (owner_id, name, description, value, category, listing, image_url)
-  values (u1, 'Cámión de lámina', 'Año 1960, color rojo.', 100, 'figura', 'exhibicion', img) returning id into it_a;
+  insert into public.items (owner_id, name, description, value, category, listing, image_url, units) values (u1, 'Cámión de lámina', 'Año 1960, color rojo.', 100, 'figura', 'exhibicion', img, null) returning id into it_a;
   select * into it from public.items where id = it_a;
   assert it.rarity = 'comun' and it.points = 10, 'T20 valor 100 = comun';
   assert it.search_text like '%camion de lamina%' and it.search_text like '%figuras%', 'T21 texto de busqueda sin acentos';
 
-  insert into public.items (owner_id, name, value, category, rarity, points, image_url)
-  values (u1, 'Trampa', 100, 'carta', 'legendaria', 9999, img) returning id into it_e;
+  insert into public.items (owner_id, name, value, category, rarity, points, image_url, units) values (u1, 'Trampa', 100, 'carta', 'legendaria', 9999, img, null) returning id into it_e;
   select * into it from public.items where id = it_e;
   assert it.rarity = 'comun' and it.points = 10, 'T22 la rareza enviada por el usuario se ignora';
 
@@ -146,7 +144,7 @@ begin
   assert n = 0, 'T30 no puede editar el perfil de otro';
 
   ok := false;
-  begin insert into public.items (owner_id, name, value, category, image_url) values (u2, 'Ajeno', 100, 'carta', img);
+  begin insert into public.items (owner_id, name, value, category, image_url, units) values (u2, 'Ajeno', 100, 'carta', img, null);
   exception when insufficient_privilege then ok := true; end;
   assert ok, 'T31 no puede crear articulos a nombre de otro';
 
@@ -206,12 +204,9 @@ begin
   -- VENTAS: datos de cobro y compra con metodo de pago
   ---------------------------------------------------------------------
   reset role;
-  insert into public.items (owner_id, name, value, category, listing, image_url)
-  values (u2, 'Cómic en venta', 700, 'comic', 'venta', img) returning id into it_b;
-  insert into public.items (owner_id, name, value, category, listing, image_url)
-  values (u2, 'Carta para cambiar', 3000, 'carta', 'intercambio', img) returning id into it_c;
-  insert into public.items (owner_id, name, value, category, listing, image_url)
-  values (u1, 'Vinilo para cambiar', 3000, 'vinilo', 'intercambio', img) returning id into it_d;   -- mismo valor que it_c
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Cómic en venta', 700, 'comic', 'venta', img, 1000) returning id into it_b;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Carta para cambiar', 3000, 'carta', 'intercambio', img, 300) returning id into it_c;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u1, 'Vinilo para cambiar', 3000, 'vinilo', 'intercambio', img, 300) returning id into it_d;   -- mismo valor que it_c
 
   assert public.seller_methods(u2) = array['efectivo'], 'T41 sin datos de cobro solo acepta efectivo';
 
@@ -544,12 +539,12 @@ begin
   ---------------------------------------------------------------------
   -- INTERCAMBIOS: misma cantidad = solo confirmar; si no, se paga la diferencia
   ---------------------------------------------------------------------
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u2, 'Pieza cara de u2', 3000, 'carta', 'intercambio', img) returning id into it_f;
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u1, 'Pieza barata de u1', 400, 'carta', 'exhibicion', img) returning id into it_g;
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u2, 'Pieza barata de u2', 400, 'vinilo', 'intercambio', img) returning id into it_h;
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u1, 'Pieza cara de u1', 3000, 'vinilo', 'exhibicion', img) returning id into it_i;
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u2, 'Pieza igual de u2', 500, 'arte', 'intercambio', img) returning id into it_j;
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u1, 'Pieza igual de u1', 500, 'arte', 'exhibicion', img) returning id into it_k;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Pieza cara de u2', 3000, 'carta', 'intercambio', img, 300) returning id into it_f;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u1, 'Pieza barata de u1', 400, 'carta', 'exhibicion', img, null) returning id into it_g;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Pieza barata de u2', 400, 'vinilo', 'intercambio', img, null) returning id into it_h;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u1, 'Pieza cara de u1', 3000, 'vinilo', 'exhibicion', img, 300) returning id into it_i;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Pieza igual de u2', 500, 'arte', 'intercambio', img, 1000) returning id into it_j;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u1, 'Pieza igual de u1', 500, 'arte', 'exhibicion', img, 1000) returning id into it_k;
 
   -- (a) pides algo que vale MAS: tu pagas la diferencia
   perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
@@ -641,7 +636,7 @@ begin
   ---------------------------------------------------------------------
   -- SUBASTAS
   ---------------------------------------------------------------------
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u2, 'Cuadro en subasta', 3000, 'arte', 'subasta', img) returning id into au1;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Cuadro en subasta', 3000, 'arte', 'subasta', img, 300) returning id into au1;
 
   perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
   set local role authenticated;
@@ -731,7 +726,7 @@ begin
   assert (select owner_id from public.items where id = au1) = u1, 'T140 el ganador recibe el articulo';
 
   -- sin pujas: termina sin ganador
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u2, 'Subasta sin pujas', 100, 'moneda', 'subasta', img) returning id into au2;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Subasta sin pujas', 100, 'moneda', 'subasta', img, null) returning id into au2;
   perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
   set local role authenticated;
   perform public.start_auction(au2, 50, 1);
@@ -779,7 +774,7 @@ begin
   ---------------------------------------------------------------------
   -- FORMAS DE PAGO ELEGIDAS POR EL USUARIO
   ---------------------------------------------------------------------
-  insert into public.items (owner_id, name, value, category, listing, image_url) values (u2, 'Pieza para probar pagos', 900, 'carta', 'venta', img) returning id into it_f;
+  insert into public.items (owner_id, name, value, category, listing, image_url, units) values (u2, 'Pieza para probar pagos', 900, 'carta', 'venta', img, 1000) returning id into it_f;
   perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
   set local role authenticated;
   update public.payment_profiles set accepted_methods = array['transferencia'] where user_id = u2;
@@ -857,7 +852,135 @@ begin
   assert txt = 'WhatsApp 3311112222', 'T169 quien tiene sesion si ve el contacto';
   reset role;
 
-  raise notice 'TODAS LAS PRUEBAS PASARON (169 de 169)';
+
+  ---------------------------------------------------------------------
+  -- RAREZA POR UNIDADES QUE EXISTEN
+  ---------------------------------------------------------------------
+  assert public.rarity_for_units(null) = 'comun' and public.rarity_for_units(5001) = 'comun', 'T170 sin dato o mas de 5000 = comun';
+  assert public.rarity_for_units(5000) = 'rara' and public.rarity_for_units(501) = 'rara', 'T171 de 501 a 5000 = rara';
+  assert public.rarity_for_units(500) = 'epica' and public.rarity_for_units(101) = 'epica', 'T172 de 101 a 500 = epica';
+  assert public.rarity_for_units(100) = 'mitica' and public.rarity_for_units(11) = 'mitica', 'T173 de 11 a 100 = mitica';
+  assert public.rarity_for_units(10) = 'legendaria' and public.rarity_for_units(1) = 'legendaria', 'T174 de 1 a 10 = legendaria';
+
+  insert into public.items (owner_id, name, value, category, image_url, units) values (u4, 'Uno de cien', 90, 'moneda', img, 100) returning id into xi;
+  select * into it from public.items where id = xi;
+  assert it.rarity = 'mitica' and it.points = 150, 'T175 uno de 100 = mitica aunque valga poco';
+  insert into public.items (owner_id, name, value, category, image_url) values (u4, 'Carisimo pero masivo', 99999, 'carta', img) returning id into xi;
+  select * into it from public.items where id = xi;
+  assert it.rarity = 'comun', 'T176 el valor ya no decide la rareza';
+  update public.items set units = 10 where id = xi;
+  assert (select rarity from public.items where id = xi) = 'legendaria', 'T177 al editar las unidades cambia la rareza';
+  ok := false; begin update public.items set units = 0 where id = xi; exception when check_violation then ok := true; end;
+  assert ok, 'T178 las unidades deben ser 1 o mas';
+
+  ---------------------------------------------------------------------
+  -- CATEGORIAS: de 1 a 3
+  ---------------------------------------------------------------------
+  insert into public.items (owner_id, name, value, categories, image_url) values (u4, 'Cómic de manga', 100, array['manga', 'comic']::public.item_category[], img) returning id into xi;
+  select * into it from public.items where id = xi;
+  assert it.category = 'manga' and it.categories = array['manga', 'comic']::public.item_category[], 'T179 la primera categoria es la principal';
+  assert it.search_text like '%comics%' and it.search_text like '%mangas%', 'T180 el buscador conoce todas las categorias';
+  assert exists (select 1 from public.items where id = xi and categories @> array['comic']::public.item_category[]), 'T181 se puede filtrar por cualquiera de ellas';
+  insert into public.items (owner_id, name, value, categories, image_url) values (u4, 'Repetidas', 100, array['carta', 'carta', 'arte']::public.item_category[], img) returning id into xi;
+  assert (select categories from public.items where id = xi) = array['carta', 'arte']::public.item_category[], 'T182 las repetidas se juntan';
+  ok := false;
+  begin insert into public.items (owner_id, name, value, categories, image_url) values (u4, 'Demasiadas', 100, array['carta', 'arte', 'comic', 'manga']::public.item_category[], img);
+  exception when check_violation then ok := true; end;
+  assert ok, 'T183 maximo 3 categorias';
+  insert into public.items (owner_id, name, value, categories, image_url) values (u4, 'Tres', 100, array['carta', 'arte', 'comic']::public.item_category[], img);
+  insert into public.items (owner_id, name, value, category, image_url) values (u4, 'Solo una vieja', 100, 'vinilo', img) returning id into xi;
+  assert (select categories from public.items where id = xi) = array['vinilo']::public.item_category[], 'T184 los que mandan una sola categoria siguen funcionando';
+  ok := false;
+  begin insert into public.items (owner_id, name, value, image_url) values (u4, 'Sin categoria', 100, img);
+  exception when not_null_violation then ok := true; end;
+  assert ok, 'T185 hace falta al menos una categoria';
+  ok := false; begin update public.items set categories = array['carta', 'arte', 'comic', 'manga']::public.item_category[] where id = xi; exception when check_violation then ok := true; end;
+  assert ok, 'T186 al editar tampoco pasa de 3';
+
+  ---------------------------------------------------------------------
+  -- PRECIO EN LINEA: el valor no puede pasar del estimado + 20 pesos
+  ---------------------------------------------------------------------
+  insert into public.price_estimates (user_id, cache_key, query_norm, name, categories, low, typical, high, confidence, basis, sample_size)
+  values (u4, 'charizard holo|carta', public.norm_text('Charizard Holo'), 'Charizard Holo', array['carta'], 400, 500, 800, 'alta', 'vendido', 4) returning id into est_ok;
+  insert into public.price_estimates (user_id, cache_key, query_norm, name, categories, confidence, sample_size)
+  values (u4, 'arte raro|arte', public.norm_text('Cuadro raro'), 'Cuadro raro', array['arte'], 'baja', 0) returning id into est_low;
+  ok := false; begin insert into public.price_estimates (user_id, cache_key, query_norm, name, categories, confidence, typical) values (u4, 'x', 'x', 'x', array['carta'], 'baja', 10); exception when check_violation then ok := true; end;
+  assert ok, 'T187 sin resultados confiables no hay precio';
+
+  insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Charizard Holo', 520, 'carta', img, est_ok) returning id into xi;
+  select * into it from public.items where id = xi;
+  assert it.value_source = 'estimado' and it.estimated_value = 500, 'T188 520 = estimado 500 + 20: permitido y marcado como estimado';
+  ok := false; msg := '';
+  begin insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Charizard Holo', 520.01, 'carta', img, est_ok);
+  exception when check_violation then ok := true; get stacked diagnostics msg = message_text; end;
+  assert ok and msg like '%no puede pasar de $520.00%', 'T189 un centavo mas del tope se rechaza: ' || msg;
+  insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Charizard Holo', 100, 'carta', img, est_ok);
+
+  ok := false; begin insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u3, 'Charizard Holo', 100, 'carta', img, est_ok); exception when check_violation then ok := true; end;
+  assert ok, 'T190 no se puede usar la busqueda de otra persona';
+  ok := false; begin insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Otra carta distinta', 100, 'carta', img, est_ok); exception when check_violation then ok := true; end;
+  assert ok, 'T191 la busqueda es de ese nombre, no de otro';
+  ok := false; begin insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Charizard Holo', 100, 'vinilo', img, est_ok); exception when check_violation then ok := true; end;
+  assert ok, 'T192 la categoria debe coincidir con la que se busco';
+  insert into public.items (owner_id, name, value, categories, image_url, estimate_id) values (u4, 'Charizard Holo', 100, array['vinilo', 'carta']::public.item_category[], img, est_ok);
+
+  update public.price_estimates set created_at = now() - interval '8 days' where id = est_ok;
+  ok := false; begin insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Charizard Holo', 100, 'carta', img, est_ok); exception when check_violation then ok := true; end;
+  assert ok, 'T193 la busqueda vence a los 7 dias';
+  update public.price_estimates set created_at = now() where id = est_ok;
+
+  insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Cuadro raro', 99999, 'arte', img, est_low) returning id into xi;
+  assert (select value_source from public.items where id = xi) = 'sin_resultados', 'T194 si no hubo precios confiables se permite el valor a mano y queda marcado';
+
+  update public.app_settings set value = 50 where key = 'price_max_over';
+  insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Charizard Holo', 550, 'carta', img, est_ok) returning id into xi;
+  ok := false; begin update public.items set value = 551 where id = xi; exception when check_violation then ok := true; end;
+  assert ok, 'T195 el tope se puede cambiar en app_settings y tambien aplica al editar';
+  update public.items set value = 540 where id = xi;
+  update public.app_settings set value = 20 where key = 'price_max_over';
+
+  update public.app_settings set value = 1 where key = 'require_estimate';
+  ok := false; begin insert into public.items (owner_id, name, value, category, image_url) values (u4, 'Sin buscar', 100, 'carta', img); exception when check_violation then ok := true; end;
+  assert ok, 'T196 con require_estimate = 1 hay que buscar el precio primero';
+  insert into public.items (owner_id, name, value, category, image_url, estimate_id) values (u4, 'Cuadro raro', 100, 'arte', img, est_low);
+  update public.items set description = 'solo cambio la descripcion' where id = xi;
+  update public.app_settings set value = 0 where key = 'require_estimate';
+
+  insert into public.items (owner_id, name, value, category, image_url) values (u4, 'Manual', 5000, 'carta', img) returning id into xi;
+  update public.items set value_source = 'estimado', estimated_value = 5000 where id = xi;
+  assert (select value_source from public.items where id = xi) = 'manual' and (select estimated_value from public.items where id = xi) is null, 'T197 nadie puede marcar su valor como estimado';
+
+  perform set_config('request.jwt.claims', json_build_object('sub', u4, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  select count(*) into n from public.price_estimates;
+  assert n = 2, 'T198 cada quien ve sus propias busquedas';
+  ok := false; begin insert into public.price_estimates (user_id, cache_key, query_norm, name, categories, confidence) values (u4, 'z', 'z', 'z', array['carta'], 'baja'); exception when insufficient_privilege then ok := true; end;
+  assert ok, 'T199 nadie crea busquedas de precio desde la pagina';
+  ok := false; begin update public.price_estimates set typical = 1; exception when insufficient_privilege then ok := true; end;
+  assert ok, 'T200 nadie cambia una busqueda de precio';
+  ok := false; begin update public.app_settings set value = 100000; exception when insufficient_privilege then ok := true; end;
+  assert ok, 'T201 nadie cambia el tope desde la pagina';
+  perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
+  select count(*) into n from public.price_estimates;
+  assert n = 0, 'T202 otra persona no ve las busquedas ajenas';
+  reset role;
+  set local role anon;
+  perform 1 from public.app_settings;
+  ok := false; begin perform 1 from public.price_estimates; exception when insufficient_privilege then ok := true; end;
+  assert ok, 'T203 un visitante no ve las busquedas de precio';
+  reset role;
+
+  insert into public.items (owner_id, name, value, category, listing, image_url) values (u4, 'Subasta con unidades', 100, 'arte', 'subasta', img) returning id into xi;
+  perform set_config('request.jwt.claims', json_build_object('sub', u4, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform public.start_auction(xi, 50, 2);
+  ok := false; begin update public.items set units = 1 where id = xi; exception when raise_exception then ok := true; end;
+  assert ok, 'T204 no se cambian las unidades durante una subasta';
+  ok := false; begin update public.items set categories = array['carta']::public.item_category[] where id = xi; exception when raise_exception then ok := true; end;
+  assert ok, 'T205 no se cambian las categorias durante una subasta';
+  reset role;
+
+  raise notice 'TODAS LAS PRUEBAS PASARON (205 de 205)';
 end $$;
 
 rollback;

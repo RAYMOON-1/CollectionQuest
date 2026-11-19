@@ -187,14 +187,24 @@
       </div>
 
       <div class="field">
-        <span class="label" id="lbl-cat">Categoría <span class="req">*</span></span>
-        <div class="cat-grid" role="radiogroup" aria-labelledby="lbl-cat" id="cat-grid"></div>
+        <span class="label" id="lbl-cat">Categorías <span class="req">*</span> <span class="hint" id="cat-count">0 de 3 elegidas</span></span>
+        <div class="cat-grid" role="group" aria-labelledby="lbl-cat" id="cat-grid"></div>
+        <span class="hint">Elige de 1 a 3 (por ejemplo, un cómic que también es de arte).</span>
+      </div>
+
+      <!-- Precio estimado en línea -->
+      <div class="estimate-box" id="estimate-box" aria-live="polite"></div>
+
+      <div class="field">
+        <label for="item-value">Valor ($) <span class="req">*</span></label>
+        <input class="input" id="item-value" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+        <span class="hint" id="value-hint"></span>
       </div>
 
       <div class="field">
-        <label for="item-value">Valor estimado ($) <span class="req">*</span></label>
-        <input class="input" id="item-value" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
-        <span class="hint">Con este valor el sistema decide la rareza.</span>
+        <label for="item-units">¿Cuántas unidades existen de este artículo?</label>
+        <input class="input" id="item-units" type="number" min="1" step="1" inputmode="numeric" placeholder="Ej. 100">
+        <span class="hint">Una de 10, una de 100, una de 500… Cuantas menos existan, más rara es. Déjalo vacío si es de producción normal o no lo sabes.</span>
       </div>
 
       <div class="rarity-preview" id="rarity-preview"></div>

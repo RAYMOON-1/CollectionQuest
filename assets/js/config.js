@@ -13,14 +13,14 @@ window.CQ_CONFIG = {
   // (ver docs/LOGIN-SOCIAL.md): su botón se oculta.
   AUTH_PROVIDERS: { google: true, facebook: true, apple: true },
 
-  // Solo para la vista previa mientras escribes el valor.
-  // La rareza real la calcula la base de datos (sql/schema.sql).
-  // Si cambias números aquí, cámbialos también en esa función SQL.
+  // La rareza depende de cuántas unidades existen del artículo.
+  // La regla real está en la base de datos (función rarity_for_units en sql/schema.sql);
+  // si cambias números aquí, cámbialos también allá. Aquí sirve para la vista previa.
   RARITY: {
-    comun:      { label: 'Común',      min: 0,     points: 10,  color: 'gray',   hex: '#A7B0C4' },
-    rara:       { label: 'Rara',       min: 500,   points: 25,  color: 'blue',   hex: '#46A8FF' },
-    epica:      { label: 'Épica',      min: 2500,  points: 60,  color: 'purple', hex: '#B26CFF' },
-    mitica:     { label: 'Mítica',     min: 10000, points: 150, color: 'pink',   hex: '#FF5FCF' },
-    legendaria: { label: 'Legendaria', min: 50000, points: 400, color: 'gold',   hex: '#FFC21A' }
+    comun:      { label: 'Común',      maxUnits: null, range: 'Más de 5,000 o producción normal', points: 10,  color: 'gray',   hex: '#A7B0C4' },
+    rara:       { label: 'Rara',       maxUnits: 5000, range: '501 a 5,000 unidades',             points: 25,  color: 'blue',   hex: '#46A8FF' },
+    epica:      { label: 'Épica',      maxUnits: 500,  range: '101 a 500 unidades',               points: 60,  color: 'purple', hex: '#B26CFF' },
+    mitica:     { label: 'Mítica',     maxUnits: 100,  range: '11 a 100 unidades',                points: 150, color: 'pink',   hex: '#FF5FCF' },
+    legendaria: { label: 'Legendaria', maxUnits: 10,   range: '1 a 10 unidades',                  points: 400, color: 'gold',   hex: '#FFC21A' }
   }
 };

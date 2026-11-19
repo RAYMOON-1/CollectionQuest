@@ -109,6 +109,95 @@ do $$ begin
   end if;
 end $$;
 
+-- ---------------------------------------------------------------------
+-- Ajustes que solo se cambian con SQL (nadie los edita desde la página)
+-- ---------------------------------------------------------------------
+create table if not exists public.app_settings (
+  key   text primary key,
+  value numeric not null,
+  note  text not null default ''
+);
+insert into public.app_settings (key, value, note) values
+  ('price_max_over',       20, 'Pesos que el valor puede pasar del precio estimado en línea'),
+  ('require_estimate',      0, '1 = todo artículo nuevo debe pasar primero por la búsqueda de precio en línea'),
+  ('estimate_daily_limit', 20, 'Búsquedas de precio en línea por persona al día')
+on conflict (key) do nothing;
+
+-- Búsquedas de precio en línea. Solo las escribe la función estimate-price (con la llave de servicio).
+create table if not exists public.price_estimates (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references public.profiles (id) on delete cascade,
+  cache_key      text not null,
+  query_norm     text not null,
+  name           text not null,
+  categories     text[] not null,
+  low            numeric(12,2),
+  typical        numeric(12,2),
+  high           numeric(12,2),
+  currency       text not null default 'MXN',
+  confidence     text not null check (confidence in ('alta', 'media', 'baja')),
+  basis          text check (basis in ('vendido', 'publicado')),
+  sample_size    int not null default 0,
+  units_estimate int check (units_estimate is null or units_estimate >= 1),
+  units_note     text not null default '',
+  sources        jsonb not null default '[]'::jsonb,
+  observations   jsonb not null default '[]'::jsonb,
+  from_cache     boolean not null default false,
+  created_at     timestamptz not null default now(),
+  check ((confidence = 'baja') = (typical is null))
+);
+
+-- Sugerencias de búsqueda de Google (HTML que Google exige mostrar junto a un resultado con búsqueda).
+alter table public.price_estimates add column if not exists search_entry_html text;
+alter table public.price_estimates add column if not exists model text;
+
+-- El nombre normalizado lo calcula siempre la base (igual que en los artículos), nunca la función.
+create or replace function public.price_estimates_set_norm()
+returns trigger
+language plpgsql as $$
+begin
+  new.query_norm := public.norm_text(new.name);
+  return new;
+end $$;
+drop trigger if exists trg_price_estimates_set_norm on public.price_estimates;
+create trigger trg_price_estimates_set_norm
+  before insert or update on public.price_estimates
+  for each row execute function public.price_estimates_set_norm();
+
+create index if not exists price_estimates_user_idx  on public.price_estimates (user_id, created_at desc);
+create index if not exists price_estimates_cache_idx on public.price_estimates (cache_key, created_at desc);
+
+-- Varias categorías (de 1 a 3), unidades que existen (rareza) y precio en línea.
+alter table public.items add column if not exists categories public.item_category[];
+update public.items set categories = array[category] where categories is null;
+alter table public.items alter column categories set not null;
+
+alter table public.items add column if not exists estimate_id uuid references public.price_estimates (id) on delete set null;
+alter table public.items add column if not exists value_source text not null default 'manual';
+alter table public.items add column if not exists estimated_value numeric(12,2);
+
+-- Unidades que existen del artículo. Los artículos que ya tenías conservan su rareza:
+-- se les asigna una cantidad que da la misma rareza (la puedes editar).
+do $$ begin
+  if not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'items' and column_name = 'units') then
+    alter table public.items add column units int;
+    update public.items
+       set units = case rarity::text when 'legendaria' then 5 when 'mitica' then 50
+                                     when 'epica' then 300 when 'rara' then 1000 else null end;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'items_units_ok') then
+    alter table public.items add constraint items_units_ok check (units is null or (units >= 1 and units <= 1000000000));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'items_categories_ok') then
+    alter table public.items add constraint items_categories_ok check (cardinality(categories) between 1 and 3);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'items_value_source_ok') then
+    alter table public.items add constraint items_value_source_ok check (value_source in ('estimado', 'sin_resultados', 'manual'));
+  end if;
+end $$;
+create index if not exists items_categories_idx on public.items using gin (categories);
+
 create index if not exists items_owner_idx    on public.items (owner_id);
 create index if not exists items_listing_idx  on public.items (listing);
 create index if not exists items_rarity_idx   on public.items (rarity);
@@ -156,10 +245,31 @@ language sql immutable as $$
   select 1 + floor(sqrt(greatest(p, 0) / 25.0))::int
 $$;
 
--- Antes de guardar un artículo: foto obligatoria, rareza, puntos y texto de búsqueda.
+-- La rareza depende de cuántas unidades existen del artículo:
+--   1 a 10        legendaria   |  11 a 100   mitica   |  101 a 500   epica
+--   501 a 5,000   rara         |  más de 5,000 o producción masiva (sin dato)   comun
+create or replace function public.rarity_for_units(u int)
+returns public.rarity_tier
+language sql immutable as $$
+  select case
+    when u is null  then 'comun'::public.rarity_tier
+    when u <= 10    then 'legendaria'::public.rarity_tier
+    when u <= 100   then 'mitica'::public.rarity_tier
+    when u <= 500   then 'epica'::public.rarity_tier
+    when u <= 5000  then 'rara'::public.rarity_tier
+    else 'comun'::public.rarity_tier
+  end
+$$;
+
+-- Antes de guardar un artículo: foto obligatoria, 1 a 3 categorías, rareza por unidades,
+-- tope del valor según el precio estimado en línea y texto de búsqueda.
 create or replace function public.items_set_rarity()
 returns trigger
 language plpgsql as $$
+declare
+  est public.price_estimates;
+  over numeric;
+  need numeric;
 begin
   if tg_op = 'INSERT' and (new.image_url is null or btrim(new.image_url) = '') then
     raise exception 'La foto del artículo es obligatoria.' using errcode = '23514';
@@ -168,11 +278,74 @@ begin
     raise exception 'La foto del artículo es obligatoria.' using errcode = '23514';
   end if;
 
-  new.rarity := public.rarity_for_value(new.value);
+  -- categorías: de 1 a 3, sin repetir; la primera es la principal
+  if new.categories is null or cardinality(new.categories) = 0 then
+    if new.category is null then
+      raise exception 'Elige al menos una categoría.' using errcode = '23502';
+    end if;
+    new.categories := array[new.category];
+  end if;
+  new.categories := (select array_agg(c order by ord)
+                       from (select c, min(ord) as ord from unnest(new.categories) with ordinality as t(c, ord) group by c) s);
+  if cardinality(new.categories) > 3 then
+    raise exception 'Elige máximo 3 categorías.' using errcode = '23514';
+  end if;
+  new.category := new.categories[1];
+
+  -- rareza y puntos según las unidades que existen
+  new.rarity := public.rarity_for_units(new.units);
   new.points := public.points_for_rarity(new.rarity);
+
+  -- el origen del valor no lo puede escribir el usuario
+  if tg_op = 'UPDATE' then
+    new.value_source := old.value_source;
+    new.estimated_value := old.estimated_value;
+  end if;
+
+  -- valor frente al precio estimado en línea
+  if tg_op = 'INSERT' or new.estimate_id is distinct from old.estimate_id
+     or new.value is distinct from old.value or new.name is distinct from old.name then
+    select coalesce((select value from public.app_settings where key = 'require_estimate'), 0) into need;
+    if new.estimate_id is null then
+      if need >= 1 then
+        raise exception 'Primero busca el precio en línea de este artículo.' using errcode = '23514';
+      end if;
+      new.value_source := 'manual';
+      new.estimated_value := null;
+    else
+      select * into est from public.price_estimates where id = new.estimate_id;
+      if not found or est.user_id is distinct from new.owner_id then
+        raise exception 'La búsqueda de precio no es válida: vuelve a buscar.' using errcode = '23514';
+      end if;
+      if est.created_at < now() - interval '7 days' then
+        raise exception 'La búsqueda de precio venció: vuelve a buscar.' using errcode = '23514';
+      end if;
+      if est.query_norm <> public.norm_text(new.name) then
+        raise exception 'El nombre cambió: vuelve a buscar el precio.' using errcode = '23514';
+      end if;
+      if not (est.categories && (select array_agg(c::text) from unnest(new.categories) c)) then
+        raise exception 'Las categorías cambiaron: vuelve a buscar el precio.' using errcode = '23514';
+      end if;
+      if est.typical is null then
+        new.value_source := 'sin_resultados';   -- se buscó, pero no hubo precios confiables
+        new.estimated_value := null;
+      else
+        over := coalesce((select value from public.app_settings where key = 'price_max_over'), 20);
+        if new.value > est.typical + over then
+          raise exception 'El valor no puede pasar de $% (precio estimado $% más $%).',
+            to_char(est.typical + over, 'FM999999999990.00'),
+            to_char(est.typical, 'FM999999999990.00'),
+            regexp_replace(to_char(over, 'FM999999990.99'), '\.$', '') using errcode = '23514';
+        end if;
+        new.value_source := 'estimado';
+        new.estimated_value := est.typical;
+      end if;
+    end if;
+  end if;
+
   new.search_text := public.norm_text(
     new.name || ' ' || coalesce(new.description, '') || ' ' ||
-    new.category::text || ' ' || new.category::text || 's');
+    (select string_agg(c::text || ' ' || c::text || 's', ' ') from unnest(new.categories) c));
   return new;
 end $$;
 
@@ -754,7 +927,8 @@ begin
       return old;
     end if;
     if new.listing::text <> 'subasta' or new.value <> old.value or new.name <> old.name
-       or new.category <> old.category or new.owner_id <> old.owner_id then
+       or new.category <> old.category or new.categories is distinct from old.categories
+       or new.units is distinct from old.units or new.owner_id <> old.owner_id then
       raise exception 'No puedes cambiar este artículo mientras esté en subasta.';
     end if;
   end if;
@@ -1034,6 +1208,18 @@ revoke insert, update, delete, truncate on public.orders from authenticated;
 drop policy if exists orders_select on public.orders;
 create policy orders_select on public.orders
   for select to authenticated using (auth.uid() in (seller_id, buyer_id));
+
+-- Ajustes y búsquedas de precio: se leen, pero no se escriben desde la página.
+alter table public.app_settings    enable row level security;
+alter table public.price_estimates enable row level security;
+revoke insert, update, delete, truncate on public.app_settings    from anon, authenticated;
+revoke insert, update, delete, truncate on public.price_estimates from anon, authenticated;
+revoke all on public.price_estimates from anon;
+
+drop policy if exists settings_select on public.app_settings;
+create policy settings_select on public.app_settings for select using (true);
+drop policy if exists estimates_select_own on public.price_estimates;
+create policy estimates_select_own on public.price_estimates for select to authenticated using (user_id = auth.uid());
 
 -- Subastas y pujas: se ven públicamente; solo se cambian con las funciones de arriba.
 alter table public.auctions enable row level security;

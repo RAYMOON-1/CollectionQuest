@@ -61,3 +61,9 @@ Las formas de pago son **efectivo** y **transferencia**: el dinero va directo en
 4. Configura un **SMTP propio** (Resend, Brevo...) para que los correos de confirmación lleguen siempre.
 5. Mira de vez en cuando *Database > Backups* y descarga un respaldo antes de cambios grandes.
 6. Si sospechas de una filtración: genera llaves nuevas en *Project Settings > API* y cambia `config.js`.
+
+## Búsqueda de precios en línea
+
+- La llave de Gemini vive **solo como secreto de Supabase** (Edge Functions > Secrets). Nunca va en el código de la página ni en GitHub.
+- La función exige sesión iniciada, tiene límite diario por persona y guarda cada búsqueda en una tabla que **solo ella puede escribir**.
+- El nombre del artículo se trata como dato, no como instrucciones, y los precios solo se aceptan de fuentes que la búsqueda de verdad consultó.

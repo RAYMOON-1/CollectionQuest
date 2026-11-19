@@ -41,11 +41,19 @@
     'Maestro', 'Gran maestro', 'Campeón', 'Leyenda'
   ];
 
-  function rarityFromValue(v) {
-    const n = Number(v) || 0;
-    let found = 'comun';
-    RARITY_ORDER.forEach((k) => { if (RARITY[k] && n >= RARITY[k].min) found = k; });
-    return found;
+  // La rareza depende de cuántas unidades existen (misma regla que rarity_for_units en la base de datos).
+  function rarityFromUnits(u) {
+    const n = Number(u);
+    if (!Number.isInteger(n) || n < 1) return 'comun';
+    for (const k of ['legendaria', 'mitica', 'epica', 'rara']) {
+      if (RARITY[k] && RARITY[k].maxUnits != null && n <= RARITY[k].maxUnits) return k;
+    }
+    return 'comun';
+  }
+  function unitsText(u) {
+    const n = Number(u);
+    if (!Number.isInteger(n) || n < 1) return 'Producción normal';
+    return n === 1 ? 'Pieza única' : `Edición de ${n.toLocaleString('es-MX')} unidades`;
   }
 
   // Mismo cálculo que la función level_for_points de la base de datos.
@@ -362,7 +370,7 @@
     cfg, configured, sb,
     $, $$, esc, icon,
     RARITY, RARITY_ORDER, LISTING,
-    rarityFromValue, levelInfo, money,
+    rarityFromUnits, unitsText, levelInfo, money,
     CATEGORIES, CATEGORY_ORDER, normText, searchTokens,
     validateEmail, domainHasMail, inboxLink, verifiedBadge, clabeValid, formatClabe, fmtCountdown, contactHTML,
     safeImageUrl, avatarHTML,
