@@ -15,39 +15,27 @@
             return null;
         }
 
-        // 1. Crear botón flotante y ventana modal en pantalla
+        // 1. Inyectar botón dentro del menú lateral (debajo de #nav-add) y el modal
         function initScannerUI() {
             if (document.getElementById('cq-rfid-btn')) return;
 
             const btn = document.createElement('button');
             btn.id = 'cq-rfid-btn';
             btn.type = 'button';
-            btn.className = 'btn btn-ghost btn-sm';
+            btn.className = 'nav-item';
             btn.innerHTML = `
-      <img src="assets/antena.webp" alt="" width="18" height="18" style="vertical-align: middle; margin-right: 6px; object-fit: contain;">
+      <img class="ico" src="assets/antena.webp" width="22" height="22" alt="" style="object-fit: contain;">
       <span>Escáner RFID</span>
-    `;
-            btn.style.cssText = `
-      border: 2px solid #FFBF1F;
-      color: #FFBF1F;
-      font-weight: 700;
-      border-radius: 999px;
-      padding: 6px 14px;
-      cursor: pointer;
     `;
             btn.addEventListener('click', connectArduino);
 
-            // Lo inserta en la barra superior derecha (antes del chip de Nivel)
-            const topRight = document.querySelector('.top-right');
-            if (topRight) {
-                topRight.insertBefore(btn, topRight.firstChild);
+            // Lo inserta justo debajo del botón "Registrar artículo" (#nav-add) en el drawer
+            const navAdd = document.getElementById('nav-add');
+            if (navAdd && navAdd.parentNode) {
+                navAdd.parentNode.insertBefore(btn, navAdd.nextSibling);
             } else {
-                // Respaldo si se abre en otra vista: esquina inferior izquierda
-                btn.style.position = 'fixed';
-                btn.style.bottom = '20px';
-                btn.style.left = '20px';
-                btn.style.zIndex = '9998';
-                btn.style.background = '#120f33';
+                // Respaldo por si se abre en una página sin drawer
+                btn.style.cssText = 'position: fixed; bottom: 20px; left: 20px; z-index: 9998; background: #120f33; border: 1px solid #FFBF1F; padding: 10px 16px; border-radius: 999px;';
                 document.body.appendChild(btn);
             }
 
@@ -79,6 +67,32 @@
             });
         }
 
+        // 2. Conectar con Arduino Uno vía USB (Chrome / Edge)
+        async function connectArduino() {
+            if (!('serial' in navigator)) {
+                alert('Usa Google Chrome o Microsoft Edge para conectar el escáner Arduino.');
+                return;
+            }
+
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 9600 });
+
+                const textEncoder = new TextEncoderStream();
+                textEncoder.readable.pipeTo(serialPort.writable);
+                serialWriter = textEncoder.writable.getWriter();
+
+                const btn = document.getElementById('cq-rfid-btn');
+                btn.innerHTML = `
+        <img class="ico" src="assets/antena.webp" width="22" height="22" alt="" style="object-fit: contain;">
+        <span style="color: #10B981; font-weight: 700;">Escáner Conectado</span>
+      `;
+
+                readSerialLoop();
+            } catch (err) {
+                console.error('Error al abrir puerto serial:', err);
+            }
+        }
         // 2. Conectar con Arduino Uno vía USB (Chrome / Edge)
         async function connectArduino() {
             if (!('serial' in navigator)) {
