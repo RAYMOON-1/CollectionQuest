@@ -1,80 +1,111 @@
-(async function () {
-  const {
-    $, $$, esc, icon, sb, configured,
-    RARITY, RARITY_ORDER, LISTING, CATEGORIES, CATEGORY_ORDER,
-    money, levelInfo, rarityFromUnits, unitsText, normText, searchTokens, fmtCountdown, contactHTML,
-    safeImageUrl, avatarHTML, verifiedBadge,
-    compressImage, uploadImage, removeImageByUrl,
-    friendlyError, toast
-  } = window.CQ;
+(async function() {
+        const {
+            $,
+            $$,
+            esc,
+            icon,
+            sb,
+            configured,
+            RARITY,
+            RARITY_ORDER,
+            LISTING,
+            CATEGORIES,
+            CATEGORY_ORDER,
+            money,
+            levelInfo,
+            rarityFromUnits,
+            unitsText,
+            normText,
+            searchTokens,
+            fmtCountdown,
+            contactHTML,
+            safeImageUrl,
+            avatarHTML,
+            verifiedBadge,
+            compressImage,
+            uploadImage,
+            removeImageByUrl,
+            friendlyError,
+            toast
+        } = window.CQ;
 
-  /* ------------------------------------------------------------------
-     Acceso: sin configuración o sin sesión, se regresa a la pantalla de entrada
-     ------------------------------------------------------------------ */
-  if (!configured) { location.replace('auth.html'); return; }
-  const session = await window.CQ.getSession();
-  if (!session) { location.replace('auth.html'); return; }
-  const uid = session.user.id;
+        /* ------------------------------------------------------------------
+           Acceso: sin configuración o sin sesión, se regresa a la pantalla de entrada
+           ------------------------------------------------------------------ */
+        if (!configured) { location.replace('auth.html'); return; }
+        const session = await window.CQ.getSession();
+        if (!session) { location.replace('auth.html'); return; }
+        const uid = session.user.id;
 
-  sb.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') location.replace('index.html');
-  });
+        sb.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') location.replace('index.html');
+        });
 
-  // Si cerraste sesión y regresas con el botón "Atrás", el navegador puede mostrar esta pantalla
-  // guardada. Cada vez que se muestra la página se vuelve a comprobar la sesión.
-  window.addEventListener('pageshow', async (e) => {
-    if (e.persisted) document.documentElement.style.visibility = 'hidden';
-    const s = await window.CQ.getSession();
-    if (!s) { location.replace('index.html'); return; }
-    document.documentElement.style.visibility = '';
-  });
+        // Si cerraste sesión y regresas con el botón "Atrás", el navegador puede mostrar esta pantalla
+        // guardada. Cada vez que se muestra la página se vuelve a comprobar la sesión.
+        window.addEventListener('pageshow', async(e) => {
+            if (e.persisted) document.documentElement.style.visibility = 'hidden';
+            const s = await window.CQ.getSession();
+            if (!s) { location.replace('index.html'); return; }
+            document.documentElement.style.visibility = '';
+        });
 
-  /* ------------------------------------------------------------------
-     Estado y piezas compartidas
-     ------------------------------------------------------------------ */
-  const PAGE_SIZE = 24;
-  const ITEM_SELECT =
-    'id, owner_id, name, description, value, category, categories, units, value_source, estimated_value, listing, rarity, points, image_url, created_at, ' +
-    'owner:profiles!owner_id(id, username, avatar_url, avatar_color, level, contact, verified), ' +
-    'auction:auctions(current_bid, bid_count, ends_at, status, start_price)';
-  const PROFILE_SELECT = 'id, username, avatar_url, avatar_color, banner_url, bio, level, points, verified, role, created_at';
+        /* ------------------------------------------------------------------
+           Estado y piezas compartidas
+           ------------------------------------------------------------------ */
+        const PAGE_SIZE = 24;
+        const ITEM_SELECT =
+            'id, owner_id, name, description, value, category, categories, units, value_source, estimated_value, listing, rarity, points, image_url, created_at, ' +
+            'owner:profiles!owner_id(id, username, avatar_url, avatar_color, level, contact, verified), ' +
+            'auction:auctions(current_bid, bid_count, ends_at, status, start_price)';
+        const PROFILE_SELECT = 'id, username, avatar_url, avatar_color, banner_url, bio, level, points, verified, role, created_at';
 
-  const ITEM_VIEWS = {
-    todos:       { title: 'Todos los artículos', sub: 'Lo que la comunidad exhibe, vende e intercambia.', scope: (q) => q },
-    venta:       { title: 'Venta',               sub: 'Piezas disponibles para comprar.',                 scope: (q) => q.eq('listing', 'venta') },
-    intercambio: { title: 'Intercambio',         sub: 'Piezas abiertas a un trueque.',                    scope: (q) => q.eq('listing', 'intercambio') },
-    exhibicion:  { title: 'Exhibición',          sub: 'Museos personales para admirar.',                  scope: (q) => q.eq('listing', 'exhibicion') },
-    subastas:    { title: 'Subastas',            sub: 'Puja en tiempo real: gana quien ofrezca más.',     scope: (q) => q.eq('listing', 'subasta') }
-  };
+        const ITEM_VIEWS = {
+            todos: { title: 'Todos los artículos', sub: 'Lo que la comunidad exhibe, vende e intercambia.', scope: (q) => q },
+            venta: { title: 'Venta', sub: 'Piezas disponibles para comprar.', scope: (q) => q.eq('listing', 'venta') },
+            intercambio: { title: 'Intercambio', sub: 'Piezas abiertas a un trueque.', scope: (q) => q.eq('listing', 'intercambio') },
+            exhibicion: { title: 'Exhibición', sub: 'Museos personales para admirar.', scope: (q) => q.eq('listing', 'exhibicion') },
+            subastas: { title: 'Subastas', sub: 'Puja en tiempo real: gana quien ofrezca más.', scope: (q) => q.eq('listing', 'subasta') }
+        };
 
-  const state = {
-    profile: null,
-    route: { name: 'todos', param: '' },
-    q: '', rarity: '', category: '', sort: 'recientes'
-  };
-  const itemCache = new Map();
+        const state = {
+            profile: null,
+            route: { name: 'todos', param: '' },
+            q: '',
+            rarity: '',
+            category: '',
+            sort: 'recientes'
+        };
+        const itemCache = new Map();
 
-  // "A" es lo que comparten app.js y los módulos (social.js, orders.js, verify.js).
-  const A = {
-    uid, sb, state, itemCache, views: {},
-    PAGE_SIZE, ITEM_SELECT, PROFILE_SELECT
-  };
+        // "A" es lo que comparten app.js y los módulos (social.js, orders.js, verify.js).
+        const A = {
+            uid,
+            sb,
+            state,
+            itemCache,
+            views: {},
+            PAGE_SIZE,
+            ITEM_SELECT,
+            PROFILE_SELECT
+        };
 
-  /* ------------------------------------------------------------------
-     Mensaje de advertencia para confirmar (compra, venta, intercambio, subasta, pujas...)
-     "html" debe venir ya escapado por quien lo llama.
-     ------------------------------------------------------------------ */
-  let confirmDlg = null;
-  function confirmDialog({ title, html, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', tone = 'warn' }) {
-    return new Promise((resolve) => {
-      if (!confirmDlg) {
-        confirmDlg = document.createElement('dialog');
-        confirmDlg.id = 'dlg-confirm';
-        confirmDlg.setAttribute('aria-labelledby', 'cf-title');
-        document.body.appendChild(confirmDlg);
-      }
-      const d = confirmDlg;
-      d.innerHTML = `
+        /* ------------------------------------------------------------------
+           Mensaje de advertencia para confirmar (compra, venta, intercambio, subasta, pujas...)
+           "html" debe venir ya escapado por quien lo llama.
+           ------------------------------------------------------------------ */
+        let confirmDlg = null;
+
+        function confirmDialog({ title, html, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', tone = 'warn' }) {
+            return new Promise((resolve) => {
+                if (!confirmDlg) {
+                    confirmDlg = document.createElement('dialog');
+                    confirmDlg.id = 'dlg-confirm';
+                    confirmDlg.setAttribute('aria-labelledby', 'cf-title');
+                    document.body.appendChild(confirmDlg);
+                }
+                const d = confirmDlg;
+                d.innerHTML = `
         <div class="dlg-body confirm-body">
           <div class="confirm-icon ${tone === 'danger' ? 'danger' : ''}">${icon('triangle-alert', tone === 'danger' ? 'red' : 'gold', 40)}</div>
           <h2 id="cf-title">${esc(title)}</h2>
@@ -84,33 +115,34 @@
             <button class="btn ${tone === 'danger' ? 'btn-red' : 'btn-green'}" type="button" data-cf="yes">${esc(confirmLabel)}</button>
           </div>
         </div>`;
-      let result = false;
-      const onClick = (e) => {
-        const b = e.target.closest('[data-cf]');
-        if (!b) return;
-        result = b.dataset.cf === 'yes';
-        d.close();
-      };
-      d.addEventListener('click', onClick);
-      d.addEventListener('close', () => { d.removeEventListener('click', onClick); resolve(result); }, { once: true });
-      d.showModal();
-      d.querySelector('[data-cf="no"]').focus();
-    });
-  }
-  A.confirm = confirmDialog;
+                let result = false;
+                const onClick = (e) => {
+                    const b = e.target.closest('[data-cf]');
+                    if (!b) return;
+                    result = b.dataset.cf === 'yes';
+                    d.close();
+                };
+                d.addEventListener('click', onClick);
+                d.addEventListener('close', () => { d.removeEventListener('click', onClick);
+                    resolve(result); }, { once: true });
+                d.showModal();
+                d.querySelector('[data-cf="no"]').focus();
+            });
+        }
+        A.confirm = confirmDialog;
 
-  // Para acordar la entrega la otra persona necesita poder escribirte: si no tienes contacto, se pide aquí.
-  function ensureContact() {
-    return new Promise((resolve) => {
-      if ((state.profile.contact || '').trim()) { resolve(true); return; }
-      let d = document.getElementById('dlg-contact');
-      if (!d) {
-        d = document.createElement('dialog');
-        d.id = 'dlg-contact';
-        d.setAttribute('aria-labelledby', 'ct-title');
-        document.body.appendChild(d);
-      }
-      d.innerHTML = `
+        // Para acordar la entrega la otra persona necesita poder escribirte: si no tienes contacto, se pide aquí.
+        function ensureContact() {
+            return new Promise((resolve) => {
+                if ((state.profile.contact || '').trim()) { resolve(true); return; }
+                let d = document.getElementById('dlg-contact');
+                if (!d) {
+                    d = document.createElement('dialog');
+                    d.id = 'dlg-contact';
+                    d.setAttribute('aria-labelledby', 'ct-title');
+                    document.body.appendChild(d);
+                }
+                d.innerHTML = `
         <div class="dlg-head"><h2 id="ct-title">Deja tu contacto</h2>
           <button class="icon-btn" type="button" data-close aria-label="Cerrar">${icon('x', 'white', 22)}</button></div>
         <form class="dlg-body" id="ct-form" novalidate>
@@ -125,57 +157,66 @@
             <button class="btn btn-green" type="submit" id="ct-save">Guardar y continuar</button>
           </div>
         </form>`;
-      let done = false;
-      d.addEventListener('close', () => { if (!done) resolve(false); }, { once: true });
-      $('#ct-form', d).addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const err = $('#ct-error', d);
-        err.classList.remove('show');
-        const v = $('#ct-input', d).value.trim();
-        const fail = (m) => { err.innerHTML = `${icon('circle-alert', 'pink', 18)}<span>${esc(m)}</span>`; err.classList.add('show'); };
-        if (v.length < 5) return fail('Escribe un WhatsApp, teléfono o correo para que te puedan contactar.');
-        const { error } = await sb.from('profiles').update({ contact: v }).eq('id', uid);
-        if (error) return fail(friendlyError(error));
-        state.profile.contact = v;
-        done = true;
-        d.close();
-        resolve(true);
-      });
-      d.showModal();
-      $('#ct-input', d).focus();
-    });
-  }
-  A.ensureContact = ensureContact;
+                let done = false;
+                d.addEventListener('close', () => { if (!done) resolve(false); }, { once: true });
+                $('#ct-form', d).addEventListener('submit', async(e) => {
+                    e.preventDefault();
+                    const err = $('#ct-error', d);
+                    err.classList.remove('show');
+                    const v = $('#ct-input', d).value.trim();
+                    const fail = (m) => { err.innerHTML = `${icon('circle-alert', 'pink', 18)}<span>${esc(m)}</span>`;
+                        err.classList.add('show'); };
+                    if (v.length < 5) return fail('Escribe un WhatsApp, teléfono o correo para que te puedan contactar.');
+                    const { error } = await sb.from('profiles').update({ contact: v }).eq('id', uid);
+                    if (error) return fail(friendlyError(error));
+                    state.profile.contact = v;
+                    done = true;
+                    d.close();
+                    resolve(true);
+                });
+                d.showModal();
+                $('#ct-input', d).focus();
+            });
+        }
+        A.ensureContact = ensureContact;
 
-  /* ------------------------------------------------------------------
-     Perfil propio
-     ------------------------------------------------------------------ */
-  async function loadProfile() {
-    const { data, error } = await sb.from('profiles').select('*').eq('id', uid).maybeSingle();
-    if (error || !data) {
-      toast('No se encontró tu perfil. Ejecuta sql/schema.sql en Supabase y crea la cuenta de nuevo.', 'error');
-      state.profile = state.profile || {
-        id: uid, username: (session.user.email || 'usuario').split('@')[0],
-        avatar_url: null, banner_url: null, bio: '', contact: '', points: 0, level: 1, role: 'usuario', verified: false
-      };
-    } else {
-      state.profile = data;
-    }
-    renderProfileUI();
-  }
-  A.refreshProfile = loadProfile;
+        /* ------------------------------------------------------------------
+           Perfil propio
+           ------------------------------------------------------------------ */
+        async function loadProfile() {
+            const { data, error } = await sb.from('profiles').select('*').eq('id', uid).maybeSingle();
+            if (error || !data) {
+                toast('No se encontró tu perfil. Ejecuta sql/schema.sql en Supabase y crea la cuenta de nuevo.', 'error');
+                state.profile = state.profile || {
+                    id: uid,
+                    username: (session.user.email || 'usuario').split('@')[0],
+                    avatar_url: null,
+                    banner_url: null,
+                    bio: '',
+                    contact: '',
+                    points: 0,
+                    level: 1,
+                    role: 'usuario',
+                    verified: false
+                };
+            } else {
+                state.profile = data;
+            }
+            renderProfileUI();
+        }
+        A.refreshProfile = loadProfile;
 
-  function renderProfileUI() {
-    const p = state.profile;
-    const info = levelInfo(p.points);
+        function renderProfileUI() {
+            const p = state.profile;
+            const info = levelInfo(p.points);
 
-    $('#btn-profile').innerHTML = avatarHTML(p, 42);
-    $('#level-num').textContent = info.level;
-    $('#pm-name').innerHTML = `@${esc(p.username)}${verifiedBadge(p, 15)}`;
-    $('#pm-level').textContent = `Nivel ${info.level}: ${info.title}` + (p.role === 'admin' ? ' (administrador)' : '');
-    $('#nav-admin').hidden = p.role !== 'admin';
+            $('#btn-profile').innerHTML = avatarHTML(p, 42);
+            $('#level-num').textContent = info.level;
+            $('#pm-name').innerHTML = `@${esc(p.username)}${verifiedBadge(p, 15)}`;
+            $('#pm-level').textContent = `Nivel ${info.level}: ${info.title}` + (p.role === 'admin' ? ' (administrador)' : '');
+            $('#nav-admin').hidden = p.role !== 'admin';
 
-    $('#drawer-user').innerHTML = `
+            $('#drawer-user').innerHTML = `
       <div class="row">
         ${avatarHTML(p, 46)}
         <div>
@@ -185,251 +226,264 @@
       </div>
       <div class="xp" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${info.pct}" aria-label="Progreso al siguiente nivel"><i style="width:${info.pct}%"></i></div>
       <div class="xp-meta"><span>${info.points} pts</span><span>${info.toNext} para el nivel ${info.level + 1}</span></div>`;
-  }
+        }
 
-  // Avatar elegido en el registro cuando todavía no había sesión (había que confirmar el correo).
-  async function applyPendingAvatar() {
-    let pending = null;
-    try { pending = JSON.parse(localStorage.getItem('cq_pending_avatar') || 'null'); } catch (e) { /* nada */ }
-    if (!pending || String(pending.email).toLowerCase() !== String(session.user.email || '').toLowerCase()) return;
-    try {
-      localStorage.removeItem('cq_pending_avatar');
-      if (state.profile.avatar_url) return;
-      const blob = await (await fetch(pending.dataUrl)).blob();
-      const url = await uploadImage('avatars', blob, uid);
-      const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', uid);
-      if (!error) { state.profile.avatar_url = url; renderProfileUI(); }
-    } catch (e) { /* si falla, se sube desde el perfil */ }
-  }
+        // Avatar elegido en el registro cuando todavía no había sesión (había que confirmar el correo).
+        async function applyPendingAvatar() {
+            let pending = null;
+            try { pending = JSON.parse(localStorage.getItem('cq_pending_avatar') || 'null'); } catch (e) { /* nada */ }
+            if (!pending || String(pending.email).toLowerCase() !== String(session.user.email || '').toLowerCase()) return;
+            try {
+                localStorage.removeItem('cq_pending_avatar');
+                if (state.profile.avatar_url) return;
+                const blob = await (await fetch(pending.dataUrl)).blob();
+                const url = await uploadImage('avatars', blob, uid);
+                const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', uid);
+                if (!error) { state.profile.avatar_url = url;
+                    renderProfileUI(); }
+            } catch (e) { /* si falla, se sube desde el perfil */ }
+        }
 
-  /* ------------------------------------------------------------------
-     Avisos en el menú (solicitudes de amistad, operaciones pendientes...)
-     ------------------------------------------------------------------ */
-  function setCount(id, n) {
-    const el = $('#' + id);
-    if (!el) return;
-    el.textContent = n > 99 ? '99+' : String(n);
-    el.hidden = !(n > 0);
-  }
-  async function refreshCounts() {
-    try {
-      const [fr, ord] = await Promise.all([
-        sb.from('friendships').select('id', { count: 'exact', head: true }).eq('addressee_id', uid).eq('status', 'pendiente'),
-        sb.from('orders').select('id, seller_id, buyer_id, status').in('status', ['pendiente', 'aceptada', 'confirmada'])
-      ]);
-      setCount('cnt-amigos', fr.count || 0);
-      const mine = (ord.data || []).filter((o) =>
-        (o.seller_id === uid && (o.status === 'pendiente' || o.status === 'confirmada')) ||
-        (o.buyer_id === uid && o.status === 'aceptada'));
-      setCount('cnt-operaciones', mine.length);
-      if (state.profile.role === 'admin') {
-        const v = await sb.from('verifications').select('id', { count: 'exact', head: true }).eq('status', 'pendiente');
-        setCount('cnt-admin', v.count || 0);
-      }
-    } catch (e) { /* los avisos son opcionales */ }
-  }
-  A.refreshCounts = refreshCounts;
+        /* ------------------------------------------------------------------
+           Avisos en el menú (solicitudes de amistad, operaciones pendientes...)
+           ------------------------------------------------------------------ */
+        function setCount(id, n) {
+            const el = $('#' + id);
+            if (!el) return;
+            el.textContent = n > 99 ? '99+' : String(n);
+            el.hidden = !(n > 0);
+        }
+        async function refreshCounts() {
+            try {
+                const [fr, ord] = await Promise.all([
+                    sb.from('friendships').select('id', { count: 'exact', head: true }).eq('addressee_id', uid).eq('status', 'pendiente'),
+                    sb.from('orders').select('id, seller_id, buyer_id, status').in('status', ['pendiente', 'aceptada', 'confirmada'])
+                ]);
+                setCount('cnt-amigos', fr.count || 0);
+                const mine = (ord.data || []).filter((o) =>
+                    (o.seller_id === uid && (o.status === 'pendiente' || o.status === 'confirmada')) ||
+                    (o.buyer_id === uid && o.status === 'aceptada'));
+                setCount('cnt-operaciones', mine.length);
+                if (state.profile.role === 'admin') {
+                    const v = await sb.from('verifications').select('id', { count: 'exact', head: true }).eq('status', 'pendiente');
+                    setCount('cnt-admin', v.count || 0);
+                }
+            } catch (e) { /* los avisos son opcionales */ }
+        }
+        A.refreshCounts = refreshCounts;
 
-  /* ------------------------------------------------------------------
-     Menú lateral y menú de perfil
-     ------------------------------------------------------------------ */
-  const drawer = $('#drawer');
-  const scrim = $('#scrim');
-  const btnMenu = $('#btn-menu');
+        /* ------------------------------------------------------------------
+           Menú lateral y menú de perfil
+           ------------------------------------------------------------------ */
+        const drawer = $('#drawer');
+        const scrim = $('#scrim');
+        const btnMenu = $('#btn-menu');
 
-  function openDrawer() {
-    drawer.classList.add('open');
-    scrim.classList.add('show');
-    btnMenu.setAttribute('aria-expanded', 'true');
-    closeProfileMenu();
-    setTimeout(() => $('.nav-item', drawer).focus(), 50);
-  }
-  function closeDrawer(returnFocus = true) {
-    drawer.classList.remove('open');
-    scrim.classList.remove('show');
-    btnMenu.setAttribute('aria-expanded', 'false');
-    if (returnFocus) btnMenu.focus();
-  }
-  btnMenu.addEventListener('click', openDrawer);
-  $('#btn-close-menu').addEventListener('click', () => closeDrawer());
-  scrim.addEventListener('click', () => closeDrawer());
+        function openDrawer() {
+            drawer.classList.add('open');
+            scrim.classList.add('show');
+            btnMenu.setAttribute('aria-expanded', 'true');
+            closeProfileMenu();
+            setTimeout(() => $('.nav-item', drawer).focus(), 50);
+        }
 
-  const profileMenu = $('#profile-menu');
-  const btnProfile = $('#btn-profile');
-  function closeProfileMenu() {
-    profileMenu.hidden = true;
-    btnProfile.setAttribute('aria-expanded', 'false');
-  }
-  btnProfile.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const willOpen = profileMenu.hidden;
-    profileMenu.hidden = !willOpen;
-    btnProfile.setAttribute('aria-expanded', String(willOpen));
-  });
-  document.addEventListener('click', (e) => {
-    if (!profileMenu.hidden && !profileMenu.contains(e.target)) closeProfileMenu();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (drawer.classList.contains('open')) closeDrawer();
-    if (!profileMenu.hidden) { closeProfileMenu(); btnProfile.focus(); }
-  });
+        function closeDrawer(returnFocus = true) {
+            drawer.classList.remove('open');
+            scrim.classList.remove('show');
+            btnMenu.setAttribute('aria-expanded', 'false');
+            if (returnFocus) btnMenu.focus();
+        }
+        btnMenu.addEventListener('click', openDrawer);
+        $('#btn-close-menu').addEventListener('click', () => closeDrawer());
+        scrim.addEventListener('click', () => closeDrawer());
 
-  $('#pm-edit').addEventListener('click', () => { closeProfileMenu(); openProfileDialog(); });
-  $('#pm-mine').addEventListener('click', () => { closeProfileMenu(); navigate('mia'); });
-  $('#pm-verify').addEventListener('click', () => { closeProfileMenu(); if (A.openVerifyDialog) A.openVerifyDialog(); });
-  $('#pm-pay').addEventListener('click', () => { closeProfileMenu(); if (A.openPaymentDialog) A.openPaymentDialog(); });
-  $('#pm-logout').addEventListener('click', async () => {
-    await sb.auth.signOut();
-    location.replace('index.html');   // replace: "Atrás" ya no regresa a la sesión
-  });
+        const profileMenu = $('#profile-menu');
+        const btnProfile = $('#btn-profile');
 
-  // El logo lleva a la página principal (limpia búsqueda y filtros)
-  $('.topbar .brand').addEventListener('click', (e) => {
-    e.preventDefault();
-    clearTimeout(searchTimer);      // por si estabas escribiendo: se cancela la búsqueda pendiente
-    $('#search').value = '';
-    state.q = ''; state.rarity = ''; state.category = '';
-    $('#filter-category').value = '';
-    renderChips();
-    window.scrollTo({ top: 0 });
-    navigate('todos');
-  });
+        function closeProfileMenu() {
+            profileMenu.hidden = true;
+            btnProfile.setAttribute('aria-expanded', 'false');
+        }
+        btnProfile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const willOpen = profileMenu.hidden;
+            profileMenu.hidden = !willOpen;
+            btnProfile.setAttribute('aria-expanded', String(willOpen));
+        });
+        document.addEventListener('click', (e) => {
+            if (!profileMenu.hidden && !profileMenu.contains(e.target)) closeProfileMenu();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (drawer.classList.contains('open')) closeDrawer();
+            if (!profileMenu.hidden) { closeProfileMenu();
+                btnProfile.focus(); }
+        });
 
-  $$('.nav-item[data-view]').forEach((b) =>
-    b.addEventListener('click', () => navigate(b.dataset.view)));
-  $('#nav-add').addEventListener('click', () => { closeDrawer(false); openItemDialog(); });
-  $('#fab-add').addEventListener('click', () => openItemDialog());
+        $('#pm-edit').addEventListener('click', () => { closeProfileMenu();
+            openProfileDialog(); });
+        $('#pm-mine').addEventListener('click', () => { closeProfileMenu();
+            navigate('mia'); });
+        $('#pm-verify').addEventListener('click', () => { closeProfileMenu(); if (A.openVerifyDialog) A.openVerifyDialog(); });
+        $('#pm-pay').addEventListener('click', () => { closeProfileMenu(); if (A.openPaymentDialog) A.openPaymentDialog(); });
+        $('#pm-logout').addEventListener('click', async() => {
+            await sb.auth.signOut();
+            location.replace('index.html'); // replace: "Atrás" ya no regresa a la sesión
+        });
 
-  /* ------------------------------------------------------------------
-     Diálogos: cerrar con [data-close] y al tocar el fondo (solo el detalle)
-     ------------------------------------------------------------------ */
-  document.addEventListener('click', (e) => {
-    const closer = e.target.closest('[data-close]');
-    if (closer) { closer.closest('dialog').close(); return; }
-    if (e.target instanceof HTMLDialogElement && e.target.id === 'dlg-detail') e.target.close();
-  });
-  // Un enlace a otra pantalla dentro de un diálogo lo cierra.
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest('dialog a[href^="#"]');
-    if (a) a.closest('dialog').close();
-  });
+        // El logo lleva a la página principal (limpia búsqueda y filtros)
+        $('.topbar .brand').addEventListener('click', (e) => {
+            e.preventDefault();
+            clearTimeout(searchTimer); // por si estabas escribiendo: se cancela la búsqueda pendiente
+            $('#search').value = '';
+            state.q = '';
+            state.rarity = '';
+            state.category = '';
+            $('#filter-category').value = '';
+            renderChips();
+            window.scrollTo({ top: 0 });
+            navigate('todos');
+        });
 
-  /* ------------------------------------------------------------------
-     Navegación por hash: #todos, #perfil/roy, #ranking...
-     ------------------------------------------------------------------ */
-  let routeToken = 0;
+        $$('.nav-item[data-view]').forEach((b) =>
+            b.addEventListener('click', () => navigate(b.dataset.view)));
+        $('#nav-add').addEventListener('click', () => { closeDrawer(false);
+            openItemDialog(); });
+        $('#fab-add').addEventListener('click', () => openItemDialog());
 
-  function navigate(name, param) {
-    const h = '#' + name + (param ? '/' + encodeURIComponent(param) : '');
-    if (location.hash === h) route(); else location.hash = h;
-  }
-  A.navigate = navigate;
+        /* ------------------------------------------------------------------
+           Diálogos: cerrar con [data-close] y al tocar el fondo (solo el detalle)
+           ------------------------------------------------------------------ */
+        document.addEventListener('click', (e) => {
+            const closer = e.target.closest('[data-close]');
+            if (closer) { closer.closest('dialog').close(); return; }
+            if (e.target instanceof HTMLDialogElement && e.target.id === 'dlg-detail') e.target.close();
+        });
+        // Un enlace a otra pantalla dentro de un diálogo lo cierra.
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest('dialog a[href^="#"]');
+            if (a) a.closest('dialog').close();
+        });
 
-  function setHead(title, sub, hidden) {
-    $('#view-title').textContent = title || '';
-    $('#view-sub').textContent = sub || '';
-    $('.view-head').hidden = !!hidden;
-    document.title = (title ? title + ' | ' : '') + 'Collection Quest';
-  }
-  A.setHead = setHead;
+        /* ------------------------------------------------------------------
+           Navegación por hash: #todos, #perfil/roy, #ranking...
+           ------------------------------------------------------------------ */
+        let routeToken = 0;
 
-  async function route() {
-    const my = ++routeToken;
-    const raw = location.hash.slice(1);
-    const [rawName, ...rest] = raw.split('/');
-    let name = rawName || 'todos';
-    let param = '';
-    try { param = decodeURIComponent(rest.join('/')); } catch (e) { param = rest.join('/'); }
-    if (name === 'mia') { name = 'perfil'; param = state.profile.username; }
+        function navigate(name, param) {
+            const h = '#' + name + (param ? '/' + encodeURIComponent(param) : '');
+            if (location.hash === h) route();
+            else location.hash = h;
+        }
+        A.navigate = navigate;
 
-    state.route = { name, param };
-    const scope = name === 'personas' ? 'people' : 'items';
-    if (lastScope !== null && scope !== lastScope) { state.q = ''; $('#search').value = ''; }   // no se mezclan búsquedas
-    lastScope = scope;
-    setSearchUi(name);
-    closeDrawer(false);
-    closeProfileMenu();
+        function setHead(title, sub, hidden) {
+            $('#view-title').textContent = title || '';
+            $('#view-sub').textContent = sub || '';
+            $('.view-head').hidden = !!hidden;
+            document.title = (title ? title + ' | ' : '') + 'Collection Quest';
+        }
+        A.setHead = setHead;
 
-    const navKey = name === 'perfil' && param === state.profile.username ? 'mia' : name;
-    $$('.nav-item[data-view]').forEach((b) => {
-      if (b.dataset.view === navKey) b.setAttribute('aria-current', 'page');
-      else b.removeAttribute('aria-current');
-    });
+        async function route() {
+            const my = ++routeToken;
+            const raw = location.hash.slice(1);
+            const [rawName, ...rest] = raw.split('/');
+            let name = rawName || 'todos';
+            let param = '';
+            try { param = decodeURIComponent(rest.join('/')); } catch (e) { param = rest.join('/'); }
+            if (name === 'mia') { name = 'perfil';
+                param = state.profile.username; }
 
-    const itemsPanel = $('#items-panel');
-    const customPanel = $('#custom-panel');
+            state.route = { name, param };
+            const scope = name === 'personas' ? 'people' : 'items';
+            if (lastScope !== null && scope !== lastScope) { state.q = '';
+                $('#search').value = ''; } // no se mezclan búsquedas
+            lastScope = scope;
+            setSearchUi(name);
+            closeDrawer(false);
+            closeProfileMenu();
 
-    if (ITEM_VIEWS[name]) {
-      customPanel.hidden = true;
-      customPanel.innerHTML = '';
-      itemsPanel.hidden = false;
-      setHead(ITEM_VIEWS[name].title, ITEM_VIEWS[name].sub);
-      if (name === 'subastas') { try { await sb.rpc('finalize_expired_auctions'); } catch (e) { /* nada */ } }
-      mainList.load(true);
-      return;
-    }
+            const navKey = name === 'perfil' && param === state.profile.username ? 'mia' : name;
+            $$('.nav-item[data-view]').forEach((b) => {
+                if (b.dataset.view === navKey) b.setAttribute('aria-current', 'page');
+                else b.removeAttribute('aria-current');
+            });
 
-    const def = A.views[name];
-    if (!def || (def.adminOnly && state.profile.role !== 'admin')) { navigate('todos'); return; }
+            const itemsPanel = $('#items-panel');
+            const customPanel = $('#custom-panel');
 
-    itemsPanel.hidden = true;
-    customPanel.hidden = false;
-    customPanel.innerHTML = '<div class="empty"><p>Cargando…</p></div>';
-    setHead(typeof def.title === 'function' ? def.title(param) : def.title, def.sub || '');
-    try {
-      await def.render(customPanel, param, () => my === routeToken);
-    } catch (err) {
-      if (my !== routeToken) return;
-      customPanel.innerHTML = `<div class="empty">${icon('circle-alert', 'pink', 48)}<h3>No se pudo cargar esta pantalla</h3><p>${esc(friendlyError(err))}</p></div>`;
-    }
-    window.scrollTo(0, 0);
-  }
-  A.reloadRoute = route;
-  window.addEventListener('hashchange', route);
+            if (ITEM_VIEWS[name]) {
+                customPanel.hidden = true;
+                customPanel.innerHTML = '';
+                itemsPanel.hidden = false;
+                setHead(ITEM_VIEWS[name].title, ITEM_VIEWS[name].sub);
+                if (name === 'subastas') { try { await sb.rpc('finalize_expired_auctions'); } catch (e) { /* nada */ } }
+                mainList.load(true);
+                return;
+            }
 
-  /* ------------------------------------------------------------------
-     Búsqueda (artículos y coleccionistas) — ignora acentos, comas y puntos
-     ------------------------------------------------------------------ */
-  let searchTimer;
-  let lastScope = null;
-  // Barra principal = artículos. En "Coleccionistas" la misma barra busca solo coleccionistas.
-  function setSearchUi(name) {
-    const ph = name === 'personas' ? 'Buscar coleccionistas' : name === 'perfil' ? 'Buscar en esta colección' : 'Buscar artículos';
-    $('#search').placeholder = ph;
-    $('#search').setAttribute('aria-label', ph);
-    const lab = $('label[for="search"]');
-    if (lab) lab.textContent = ph;
-  }
-  function onSearch(q) {
-    state.q = q;
-    const v = state.route.name;
-    if (ITEM_VIEWS[v]) mainList.load(true);
-    else if (A.views[v] && A.views[v].search) A.views[v].search(q);
-    else navigate('todos');
-  }
-  // Los resultados aparecen en la misma página (no hay lista desplegable).
-  $('#search').addEventListener('input', (e) => {
-    clearTimeout(searchTimer);
-    const q = e.target.value.trim();
-    searchTimer = setTimeout(() => onSearch(q), 300);
-  });
-  $('#search-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    clearTimeout(searchTimer);
-    onSearch($('#search').value.trim());
-  });
+            const def = A.views[name];
+            if (!def || (def.adminOnly && state.profile.role !== 'admin')) { navigate('todos'); return; }
 
-  async function fetchPeople(q, limit = 24, offset = 0) {
-    let qb = sb.from('profiles').select(PROFILE_SELECT, { count: 'exact' });
-    searchTokens(q).forEach((t) => { qb = qb.ilike('search_text', `%${t}%`); });
-    return qb.order('points', { ascending: false }).order('username', { ascending: true }).range(offset, offset + limit - 1);
-  }
-  A.fetchPeople = fetchPeople;
+            itemsPanel.hidden = true;
+            customPanel.hidden = false;
+            customPanel.innerHTML = '<div class="empty"><p>Cargando…</p></div>';
+            setHead(typeof def.title === 'function' ? def.title(param) : def.title, def.sub || '');
+            try {
+                await def.render(customPanel, param, () => my === routeToken);
+            } catch (err) {
+                if (my !== routeToken) return;
+                customPanel.innerHTML = `<div class="empty">${icon('circle-alert', 'pink', 48)}<h3>No se pudo cargar esta pantalla</h3><p>${esc(friendlyError(err))}</p></div>`;
+            }
+            window.scrollTo(0, 0);
+        }
+        A.reloadRoute = route;
+        window.addEventListener('hashchange', route);
 
-  function personCardHTML(p) {
-    const info = levelInfo(p.points);
-    return `
+        /* ------------------------------------------------------------------
+           Búsqueda (artículos y coleccionistas) — ignora acentos, comas y puntos
+           ------------------------------------------------------------------ */
+        let searchTimer;
+        let lastScope = null;
+        // Barra principal = artículos. En "Coleccionistas" la misma barra busca solo coleccionistas.
+        function setSearchUi(name) {
+            const ph = name === 'personas' ? 'Buscar coleccionistas' : name === 'perfil' ? 'Buscar en esta colección' : 'Buscar artículos';
+            $('#search').placeholder = ph;
+            $('#search').setAttribute('aria-label', ph);
+            const lab = $('label[for="search"]');
+            if (lab) lab.textContent = ph;
+        }
+
+        function onSearch(q) {
+            state.q = q;
+            const v = state.route.name;
+            if (ITEM_VIEWS[v]) mainList.load(true);
+            else if (A.views[v] && A.views[v].search) A.views[v].search(q);
+            else navigate('todos');
+        }
+        // Los resultados aparecen en la misma página (no hay lista desplegable).
+        $('#search').addEventListener('input', (e) => {
+            clearTimeout(searchTimer);
+            const q = e.target.value.trim();
+            searchTimer = setTimeout(() => onSearch(q), 300);
+        });
+        $('#search-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            clearTimeout(searchTimer);
+            onSearch($('#search').value.trim());
+        });
+
+        async function fetchPeople(q, limit = 24, offset = 0) {
+            let qb = sb.from('profiles').select(PROFILE_SELECT, { count: 'exact' });
+            searchTokens(q).forEach((t) => { qb = qb.ilike('search_text', `%${t}%`); });
+            return qb.order('points', { ascending: false }).order('username', { ascending: true }).range(offset, offset + limit - 1);
+        }
+        A.fetchPeople = fetchPeople;
+
+        function personCardHTML(p) {
+            const info = levelInfo(p.points);
+            return `
       <a class="person-card" href="#perfil/${esc(encodeURIComponent(p.username))}">
         ${avatarHTML(p, 52)}
         <div class="who">
@@ -998,9 +1052,11 @@
         <p>El precio de arriba era de otra búsqueda. ${canEstimate() ? 'Se buscará otra vez en un momento, o hazlo ahora:' : 'Completa el nombre, las categorías y la foto.'}</p>${canEstimate() ? searchBtn('Buscar precio en línea') : ''}</div>`;
       return;
     }
-    if (est && est.found) {
+   if (est && est.found) {
       const conf = est.confidence === 'alta' ? 'confianza alta' : 'confianza media';
       const unitsFilled = $('#item-units').value.trim() !== '';
+      const suggestedRarityKey = rarityFromUnits(est.units_estimate);
+      const suggestedRarity = RARITY[suggestedRarityKey] || RARITY.comun;
       const srcs = (est.sources || []).map((x) => isHttp(x.uri)
         ? `<li><a href="${esc(x.uri)}" target="_blank" rel="noopener noreferrer">${esc(x.title || 'fuente')}</a></li>` : `<li>${esc(x.title || '')}</li>`).join('');
       const obs = (est.observations || []).map((o) => {
@@ -1009,14 +1065,15 @@
       }).join('');
       box.innerHTML = `<div class="est est-ok">
         <p class="est-title">${icon('badge-check', 'green', 20)}<b>Precio estimado en línea: ${money(est.typical)}</b></p>
+        <p class="est-title" style="margin-top:4px">${icon('gem', suggestedRarity.color, 18)}<b>Rareza sugerida: ${esc(suggestedRarity.label)}</b> <span class="hint">(+${suggestedRarity.points} pts)</span></p>
         <p class="hint">Rango ${money(est.low)} a ${money(est.high)}. Basado en ${est.sample_size} ${est.basis === 'vendido' ? 'ventas' : 'precios publicados'}, ${conf}${est.from_cache ? ' (resultado reciente guardado)' : ''}.</p>
         <p>Tu valor puede ser como máximo <b>${money(est.max_allowed)}</b> (estimado más ${money(est.max_over)}).</p>
         <div class="est-actions">
           <button class="btn btn-green btn-sm" type="button" id="est-use">Usar ${money(est.typical)}</button>
           <button class="btn btn-ghost btn-sm" type="button" id="est-again">Buscar otra vez</button>
         </div>
-        ${est.units_estimate && !unitsFilled ? `<p class="est-units">${icon('gem', 'purple', 16)} En línea encontramos que podrían existir unas <b>${Number(est.units_estimate).toLocaleString('es-MX')}</b> unidades${est.units_note ? ' (' + esc(est.units_note) + ')' : ''}.
-          <button class="btn btn-ghost btn-sm" type="button" id="est-units">Usar ${Number(est.units_estimate).toLocaleString('es-MX')}</button></p>` : ''}
+        ${est.units_estimate && !unitsFilled ? `<p class="est-units">${icon('gem', suggestedRarity.color, 16)} En línea encontramos que podrían existir unas <b>${Number(est.units_estimate).toLocaleString('es-MX')}</b> unidades${est.units_note ? ' (' + esc(est.units_note) + ')' : ''}.
+          <button class="btn btn-ghost btn-sm" type="button" id="est-units">Usar ${Number(est.units_estimate).toLocaleString('es-MX')} (${esc(suggestedRarity.label)})</button></p>` : ''}
         ${(srcs || obs) ? `<details class="est-src"><summary>Fuentes y precios encontrados</summary>${obs ? `<ul>${obs}</ul>` : ''}${srcs ? `<ul>${srcs}</ul>` : ''}</details>` : ''}
         ${est.search_entry_html ? `<iframe class="sg-frame" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${esc(est.search_entry_html)}" title="Sugerencias de búsqueda de Google"></iframe>` : ''}
         <p class="hint">Es una estimación aproximada hecha con inteligencia artificial y búsqueda en internet: puede equivocarse.</p>
