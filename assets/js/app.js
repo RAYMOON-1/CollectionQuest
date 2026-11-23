@@ -123,8 +123,10 @@
                     d.close();
                 };
                 d.addEventListener('click', onClick);
-                d.addEventListener('close', () => { d.removeEventListener('click', onClick);
-                    resolve(result); }, { once: true });
+                d.addEventListener('close', () => {
+                    d.removeEventListener('click', onClick);
+                    resolve(result);
+                }, { once: true });
                 d.showModal();
                 d.querySelector('[data-cf="no"]').focus();
             });
@@ -164,8 +166,10 @@
                     const err = $('#ct-error', d);
                     err.classList.remove('show');
                     const v = $('#ct-input', d).value.trim();
-                    const fail = (m) => { err.innerHTML = `${icon('circle-alert', 'pink', 18)}<span>${esc(m)}</span>`;
-                        err.classList.add('show'); };
+                    const fail = (m) => {
+                        err.innerHTML = `${icon('circle-alert', 'pink', 18)}<span>${esc(m)}</span>`;
+                        err.classList.add('show');
+                    };
                     if (v.length < 5) return fail('Escribe un WhatsApp, teléfono o correo para que te puedan contactar.');
                     const { error } = await sb.from('profiles').update({ contact: v }).eq('id', uid);
                     if (error) return fail(friendlyError(error));
@@ -239,8 +243,10 @@
                 const blob = await (await fetch(pending.dataUrl)).blob();
                 const url = await uploadImage('avatars', blob, uid);
                 const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', uid);
-                if (!error) { state.profile.avatar_url = url;
-                    renderProfileUI(); }
+                if (!error) {
+                    state.profile.avatar_url = url;
+                    renderProfileUI();
+                }
             } catch (e) { /* si falla, se sube desde el perfil */ }
         }
 
@@ -316,14 +322,20 @@
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             if (drawer.classList.contains('open')) closeDrawer();
-            if (!profileMenu.hidden) { closeProfileMenu();
-                btnProfile.focus(); }
+            if (!profileMenu.hidden) {
+                closeProfileMenu();
+                btnProfile.focus();
+            }
         });
 
-        $('#pm-edit').addEventListener('click', () => { closeProfileMenu();
-            openProfileDialog(); });
-        $('#pm-mine').addEventListener('click', () => { closeProfileMenu();
-            navigate('mia'); });
+        $('#pm-edit').addEventListener('click', () => {
+            closeProfileMenu();
+            openProfileDialog();
+        });
+        $('#pm-mine').addEventListener('click', () => {
+            closeProfileMenu();
+            navigate('mia');
+        });
         $('#pm-verify').addEventListener('click', () => { closeProfileMenu(); if (A.openVerifyDialog) A.openVerifyDialog(); });
         $('#pm-pay').addEventListener('click', () => { closeProfileMenu(); if (A.openPaymentDialog) A.openPaymentDialog(); });
         $('#pm-logout').addEventListener('click', async() => {
@@ -347,8 +359,10 @@
 
         $$('.nav-item[data-view]').forEach((b) =>
             b.addEventListener('click', () => navigate(b.dataset.view)));
-        $('#nav-add').addEventListener('click', () => { closeDrawer(false);
-            openItemDialog(); });
+        $('#nav-add').addEventListener('click', () => {
+            closeDrawer(false);
+            openItemDialog();
+        });
         $('#fab-add').addEventListener('click', () => openItemDialog());
 
         /* ------------------------------------------------------------------
@@ -392,13 +406,17 @@
             let name = rawName || 'todos';
             let param = '';
             try { param = decodeURIComponent(rest.join('/')); } catch (e) { param = rest.join('/'); }
-            if (name === 'mia') { name = 'perfil';
-                param = state.profile.username; }
+            if (name === 'mia') {
+                name = 'perfil';
+                param = state.profile.username;
+            }
 
             state.route = { name, param };
             const scope = name === 'personas' ? 'people' : 'items';
-            if (lastScope !== null && scope !== lastScope) { state.q = '';
-                $('#search').value = ''; } // no se mezclan búsquedas
+            if (lastScope !== null && scope !== lastScope) {
+                state.q = '';
+                $('#search').value = '';
+            } // no se mezclan búsquedas
             lastScope = scope;
             setSearchUi(name);
             closeDrawer(false);
@@ -564,6 +582,7 @@
       qb = opts.scope(qb);
       if (f.rarity) qb = qb.eq('rarity', f.rarity);
       if (f.category) qb = qb.contains('categories', [f.category]);
+      qb = qb.eq('approval_status', 'aprobado');
       searchTokens(f.q).forEach((t) => { qb = qb.ilike('search_text', `%${t}%`); });
 
       if (f.sort === 'rareza') qb = qb.order('points', { ascending: false }).order('value', { ascending: false });
@@ -1270,7 +1289,7 @@
       const rr = RARITY[saved.rarity];
       toast((editing
         ? `Cambios guardados. Rareza: ${rr.label}.`
-        : `Artículo registrado. Rareza: ${rr.label}, +${saved.points} puntos.`) + auctionMsg);
+        : `Artículo enviado. El administrador recibió los datos para aprobar su publicación.`) + auctionMsg);
       await afterChange();
     } catch (err) {
       showItemError(friendlyError(err));
