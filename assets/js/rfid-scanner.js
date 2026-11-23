@@ -97,7 +97,17 @@
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (line.startsWith('UID:')) {
-                        const uid = line.replace('UID:', '').trim();
+                        const uid = line.replace('UID:', '').trim().toUpperCase();
+
+                        // Si el modal de Registrar/Editar artículo está abierto y tiene el campo #item-rfid, rellenarlo directo
+                        const itemModal = document.getElementById('item-modal');
+                        const rfidInput = document.getElementById('item-rfid');
+                        if (itemModal && !itemModal.hidden && rfidInput) {
+                            rfidInput.value = uid;
+                            if (serialWriter) await serialWriter.write('1');
+                            continue;
+                        }
+
                         await lookupCardByUID(uid);
                     }
                 }
@@ -130,11 +140,11 @@
         }
 
         if (serialWriter) await serialWriter.write('1'); // Enciende LED Verde en ESP32
-        renderPokemonCard(item, uid);
+        renderPokemonCard(item, uid, sb);
     }
 
-    // 5A. Mostrar tarjeta encontrada
-    function renderPokemonCard(item, uid) {
+    // 5A. Mostrar tarjeta encontrada con opción de desvincular tag
+    function renderPokemonCard(item, uid, sb) {
         const modal = document.getElementById('cq-rfid-modal');
         const card = document.getElementById('cq-rfid-card');
         const content = document.getElementById('cq-rfid-content');
@@ -157,10 +167,25 @@
             '<h2 style="margin: 6px 0 12px; font-size: 22px;">' + itemName + '</h2>' +
             (item.image_url ? '<img src="' + item.image_url + '" alt="' + itemName + '" style="width: 180px; height: 240px; object-fit: cover; border-radius: 12px; margin: 0 auto 14px; border: 2px solid ' + rarityCfg.hex + '; display: block;">' : '') +
             '<p style="color: #CBD5E1; font-size: 14px; margin-bottom: 14px;">' + (item.description || 'Sin descripción registrada.') + '</p>' +
-            '<div style="display: flex; justify-content: space-around; background: #0B101D; padding: 10px; border-radius: 10px;">' +
+            '<div style="display: flex; justify-content: space-around; background: #0B101D; padding: 10px; border-radius: 10px; margin-bottom: 12px;">' +
             '<div><small style="color:#94A3B8;">Valor</small><div style="font-weight:700; color:#10B981;">$' + itemValue + '</div></div>' +
-            '<div><small style="color:#94A3B8;">Tag UID</small><div style="font-family:monospace; color:#38BDF8;">${uid}</div></div>' +
-            '</div>';
+            '<div><small style="color:#94A3B8;">Tag UID</small><div style="font-family:monospace; color:#38BDF8;">' + uid + '</div></div>' +
+            '</div>' +
+            '<button id="cq-rfid-unlink-btn" type="button" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #EF444455; background: #EF44441A; color: #F87171; font-size: 13px; font-weight: 600; cursor: pointer;">Desvincular este tag RFID</button>';
+
+        const unlinkBtn = document.getElementById('cq-rfid-unlink-btn');
+        if (unlinkBtn) {
+            unlinkBtn.addEventListener('click', async function() {
+                if (!confirm('¿Seguro que quieres quitar el tag ' + uid + ' de "' + itemName + '"?')) return;
+                const { error } = await sb.from('items').update({ rfid_uid: null }).eq('id', item.id);
+                if (error) {
+                    alert('Error al desvincular: ' + error.message);
+                } else {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+
         modal.style.display = 'flex';
     }
 
